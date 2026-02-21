@@ -1,0 +1,9 @@
+FROM python:3.11-slim
+
+# 中文注释：编排层 Dockerfile
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src ./src
+ENV PYTHONPATH=/app/src
+CMD ["uvicorn", "shannon.orchestration.main:app", "--host", "0.0.0.0", "--port", "8000"]

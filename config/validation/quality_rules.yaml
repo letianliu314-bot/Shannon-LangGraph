@@ -1,0 +1,5 @@
+# 质量验证规则
+min_content_length: 50
+required_keywords:
+  - dataset
+  - field

@@ -1,0 +1,25 @@
+[project]
+name = "shannon-langgraph"
+version = "0.1.0"
+description = "LangGraph-based dataset orchestration service"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "pyyaml>=6.0",
+  "python-dotenv>=1.1",
+  "httpx>=0.28",
+  "jsonschema>=4.23",
+  "langgraph>=1.0",
+  "redis>=5.0",
+  "psycopg[binary]>=3.2",
+  "qdrant-client>=1.11",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]

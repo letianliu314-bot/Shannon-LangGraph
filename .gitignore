@@ -1,0 +1,105 @@
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.whl
+MANIFEST
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+env/
+.env.bak
+
+# 测试 & 覆盖率
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# 类型检查 & Lint
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# ===========================
+# 环境变量 & 敏感配置
+# ===========================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ===========================
+# Node.js / Next.js (desktop/)
+# ===========================
+desktop/node_modules/
+desktop/.next/
+desktop/out/
+desktop/.env.local
+desktop/npm-debug.log*
+desktop/yarn-debug.log*
+desktop/yarn-error.log*
+desktop/.pnpm-debug.log*
+
+# ===========================
+# macOS
+# ===========================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ===========================
+# IDE & 编辑器
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ===========================
+# Docker
+# ===========================
+# 本地 Docker volume 数据
+docker-data/
+
+# ===========================
+# 日志 & 临时文件
+# ===========================
+*.log
+*.tmp
+*.temp
+logs/
+
+# ===========================
+# LangGraph / SQLite checkpoint（本地调试用）
+# ===========================
+*.db
+*.sqlite
+*.sqlite3

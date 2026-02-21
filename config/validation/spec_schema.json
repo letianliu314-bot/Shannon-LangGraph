@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["dataset_name", "objective", "inputs", "outputs", "schema"],
+  "properties": {
+    "dataset_name": {"type": "string"},
+    "objective": {"type": "string"},
+    "inputs": {"type": "array", "items": {"type": "string"}},
+    "outputs": {"type": "array", "items": {"type": "string"}},
+    "schema": {"type": "object"},
+    "quality_rules": {"type": "array", "items": {"type": "string"}},
+    "constraints": {"type": "array", "items": {"type": "string"}},
+    "delivery_format": {"type": "string"},
+    "budget_limit_token": {"type": ["integer", "null"]}
+  }
+}

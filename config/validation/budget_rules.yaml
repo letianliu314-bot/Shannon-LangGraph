@@ -1,0 +1,4 @@
+# 预算规则
+max_token: 8000
+max_retry: 3
+model_upgrade_threshold: 2

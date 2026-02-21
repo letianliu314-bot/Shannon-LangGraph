@@ -1,0 +1,21 @@
+# Shannon 平台模型配置（仅 OpenAI）
+# 说明：
+# 1. 按 tier 分类模型；
+# 2. 不使用 priority 排序字段；
+# 3. 运行时将按每个 tier 下 providers 的首个 openai 模型进行解析。
+
+model_tiers:
+  small:
+    providers:
+      - provider: openai
+        model: gpt-5-nano
+
+  medium:
+    providers:
+      - provider: openai
+        model: gpt-5-mini
+
+  large:
+    providers:
+      - provider: openai
+        model: gpt-5.1

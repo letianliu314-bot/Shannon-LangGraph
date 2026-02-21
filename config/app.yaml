@@ -1,0 +1,5 @@
+# 编排层核心配置
+thread_timeout_sec: 1800
+checkpoint_interval_sec: 30
+default_model: gpt-5-mini
+max_retry: 3

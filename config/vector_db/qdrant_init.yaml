@@ -1,0 +1,5 @@
+# Qdrant初始化配置
+collection: shannon_tasks
+vector_size: 1536
+distance: Cosine
+shard_number: 1
