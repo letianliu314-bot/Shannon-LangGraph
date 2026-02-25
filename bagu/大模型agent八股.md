@@ -125,54 +125,54 @@ JSON 标准输出控制通常采用“生成约束 + 结构校验 + 自动修复
 
 ### 1）Function Calling 的工具路由可用什么公式描述？
 可以把工具选择抽象成一个带约束的排序问题，给定候选工具集合 $\mathcal{T}$，定义每个工具的综合打分
-$$
+```math
 S(t\mid q)=\alpha\cdot \mathrm{Rel}(q,t)+\beta\cdot \mathrm{Success}(t)-\gamma\cdot \mathrm{Cost}(t)-\delta\cdot \mathrm{Risk}(t)
-$$
+```
 其中 $\mathrm{Rel}$ 是语义相关性，$\mathrm{Success}$ 是历史成功率，$\mathrm{Cost}$ 是时延/费用归一化，$\mathrm{Risk}$ 是失败或越权风险，最终选择
-$$
+```math
 t^*=\arg\max_{t\in\mathcal{T}} S(t\mid q)
-$$
+```
 并受 schema 约束和权限约束共同过滤，这个表达在面试里能清晰体现你不是“拍脑袋选工具”，而是可解释的多目标路由。
 
 ### 2）RAG 检索与评估有哪些常用数学指标？
 召回常用 Recall@k：
-$$
+```math
 \mathrm{Recall@k}=\frac{|\mathrm{Relevant}\cap\mathrm{TopK}|}{|\mathrm{Relevant}|}
-$$
+```
 排序常用 MRR：
-$$
+```math
 \mathrm{MRR}=\frac{1}{N}\sum_{i=1}^{N}\frac{1}{\mathrm{rank}_i}
-$$
+```
 增益质量常用 NDCG@k：
-$$
+```math
 \mathrm{NDCG@k}=\frac{\mathrm{DCG@k}}{\mathrm{IDCG@k}},\quad
 \mathrm{DCG@k}=\sum_{j=1}^{k}\frac{2^{rel_j}-1}{\log_2(j+1)}
-$$
+```
 在面试回答中你可以补一句“离线看 Recall/MRR/NDCG，在线看采纳率与追问率”，这就是完整评估闭环。
 
 ### 3）质量门控如何做成可计算规则？
 可把门控写成加权分：
-$$
+```math
 Q=w_1\cdot f_{pages}+w_2\cdot f_{length}+w_3\cdot f_{match}+w_4\cdot f_{freshness}+w_5\cdot f_{diversity}
-$$
+```
 当 $Q<\tau$ 时触发补检索/爬虫兜底；当 $Q\ge\tau$ 才进入生成阶段，这种“先证据后生成”的策略可显著降低幻觉和无依据回答。
 
 ### 4）上下文预算怎么量化？
 给定总窗口上限 $B$（tokens），可分配为
-$$
+```math
 B=B_{sys}+B_{task}+B_{short}+B_{long}+B_{reserve}
-$$
+```
 其中系统约束、任务指令、短期会话、长期记忆、保留冗余分别占预算；实际工程里可设动态策略，例如当检索证据变长时自动压缩历史对话摘要，保证关键证据优先进入窗口。
 
 ### 5）多 Agent 调度吞吐怎么表达？
 在理想情况下，总吞吐近似
-$$
+```math
 \mathrm{Throughput}\approx \frac{\sum_i \mathrm{done\_tasks}_i}{T}
-$$
+```
 首轮可并发任务数受 ready 队列大小约束：
-$$
+```math
 P_0=\min(|\mathrm{ready\_queue}|,\mathrm{max\_concurrency})
-$$
+```
 因此依赖降级策略的核心就是提升早期 $|\mathrm{ready\_queue}|$，把串行链路转成可控并行链路。
 
 ### 6）JSON 稳定输出如何用伪代码表达？
