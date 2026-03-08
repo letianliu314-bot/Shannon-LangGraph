@@ -1,6 +1,6 @@
 # Shannon 后端 — 修改历史记录
 
-> 最后更新：2026-03-08  
+> 最后更新：2026-03-08 (补充前端实时 Graph + 工具链修复)  
 > 按日期记录后端（编排层 / LLM 服务 / 基础设施）的所有修改
 
 ---
@@ -22,6 +22,10 @@
     - [3. 409 重复提交防护](#3-409-重复提交防护)
     - [4. 前端适配（代理超时 + Hook 简化 + 测试更新）](#4-前端适配代理超时--hook-简化--测试更新)
   - [2026-03-08：Resilient Fallback 误触发修复 \& 质量控制策略](#2026-03-08resilient-fallback-误触发修复--质量控制策略)
+  - [2026-03-08：前端实时 Graph 阶段追踪 \& 开发工具链修复 \& 文档整理](#2026-03-08前端实时-graph-阶段追踪--开发工具链修复--文档整理)
+    - [1. 前端 Graph 调用链实时阶段追踪](#1-前端-graph-调用链实时阶段追踪)
+    - [2. 前端启动 EADDRINUSE 端口冲突修复](#2-前端启动-eaddrinuse-端口冲突修复)
+    - [3. troubleshooting.md 全量整理](#3-troubleshootingmd-全量整理)
   - [附录：后端修改文件速查](#附录后端修改文件速查)
   - [附录：环境变量速查](#附录环境变量速查)
 
@@ -429,6 +433,83 @@ curl -X POST http://127.0.0.1:8000/runs -d '{
 
 ---
 
+## 2026-03-08：前端实时 Graph 阶段追踪 & 开发工具链修复 & 文档整理
+
+本次补充记录本轮对话中完成的前端实时调用链、开发工具链和文档方面的改动。
+
+### 1. 前端 Graph 调用链实时阶段追踪
+
+**问题**: 前端右侧 CallGraph 在工作流完成前不显示任何节点，用户无法感知当前执行阶段。仅在 `WORKFLOW_COMPLETED` 后一次性渲染全部调用链。
+
+**根因**: `buildGraphFromEvents()` 仅处理 `AGENT_CALL_*` 事件，忽略了 `NODE_STARTED` / `NODE_COMPLETED` / `NODE_FAILED` 等阶段事件。`GraphLegend` 组件为静态渲染。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `desktop/lib/types.ts` | `GraphNodeData.kind` 新增 `"phase"` 联合类型 |
+| `desktop/lib/events/graph.ts` | 新增 6 个 phase 节点（refine→decompose→schedule→execute→verify→finalize），处理 `NODE_STARTED/COMPLETED/FAILED` 实时更新阶段状态；`WORKFLOW_STARTED/COMPLETED/FAILED` 事件更新整体状态 |
+| `desktop/components/graph/GraphLegend.tsx` | 从静态图例重写为实时进度条，接收 `nodes` prop，running 状态带 pulse 动画 |
+| `desktop/app/page.tsx` | 向 `<GraphLegend>` 传递 `nodes={eventUi.nodes}` |
+| `desktop/app/globals.css` | 新增 `.legend-phases`、`.legend-phase-item`、`.legend-phase-arrow`、`@keyframes pulse` |
+
+**关键改动**:
+
+```typescript
+// graph.ts — 新增 phase 节点（始终渲染在图表顶部）
+const phaseOrder = ["refine", "decompose", "schedule", "execute", "verify", "finalize"];
+for (const phase of phaseOrder) {
+  upsertNode(`phase:${phase}`, { label: phaseLabels[phase], kind: "phase", status: "idle" }, ...);
+}
+
+// 实时响应 NODE_STARTED 事件
+if (event.type === "NODE_STARTED") {
+  upsertNode(`phase:${nodeName}`, { ..., status: "running" }, ...);
+}
+```
+
+```tsx
+// GraphLegend.tsx — 实时进度条（简化示意）
+const phaseNodes = nodes.filter(n => n.data.kind === "phase");
+// 精炼 → 分解 → 调度 → 执行 → 验证 → 汇总
+//  ●      ●      ●      ⠿      ○      ○
+// 完成   完成   完成   运行中  等待   等待
+```
+
+---
+
+### 2. 前端启动 EADDRINUSE 端口冲突修复
+
+**问题**: 执行 `start-dev.sh` 时报 `Error: listen EADDRINUSE: address already in use :::3000`。上一次 Next.js 进程未正常退出，残留进程占用端口。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `desktop/start-dev.sh` | 启动前自动释放 3000 端口：`lsof -ti :3000 2>/dev/null \| xargs kill -9 2>/dev/null && sleep 1` |
+
+---
+
+### 3. troubleshooting.md 全量整理
+
+**改动**: 将 `docs/troubleshooting.md` 从最初的 3 个 Issue 扩展到 9 个 Issue 的完整故障记录，覆盖本轮对话涉及的所有修复：
+
+| Issue # | 标题 |
+|---|---|
+| #1 | PostgreSQL 持久化降级 |
+| #2 | 前端 TypeScript + Node.js 兼容性 |
+| #3 | gpt-5.1 APITimeoutError |
+| #4 | state_db 404 日志噪音 |
+| #5 | WatchFiles 误触发 reload |
+| #6 | EADDRINUSE 端口冲突 |
+| #7 | 前端 Graph 非实时更新 |
+| #8 | 前端 Graph 三层架构重构（03-05） |
+| #9 | POST /runs 同步阻塞致 502（03-05） |
+
+同步更新了启动流程、环境变量速查等附录章节。
+
+---
+
 ## 附录：后端修改文件速查
 
 | 日期 | 文件 | 改动类型 |
@@ -453,6 +534,13 @@ curl -X POST http://127.0.0.1:8000/runs -d '{
 | 03-08 | `src/shannon/orchestration/orchestrator/graph.py` | execute_node 透传 strict_output / quality_mode |
 | 03-08 | `src/shannon/orchestration/orchestrator/llm_service_client.py` | run_task() 请求体增加 strict_output / quality_mode |
 | 03-08 | `tests/unit/test_llm_service_main.py` | DAG 深度断言更新为 ≤3 层 + 祖父节点校验 |
+| 03-08 | `desktop/lib/types.ts` | `GraphNodeData.kind` 新增 `"phase"` |
+| 03-08 | `desktop/lib/events/graph.ts` | 新增 6 个 phase 节点 + NODE_STARTED/COMPLETED/FAILED 实时处理 |
+| 03-08 | `desktop/components/graph/GraphLegend.tsx` | 重写为实时进度条 |
+| 03-08 | `desktop/app/page.tsx` | 向 GraphLegend 传递 nodes prop |
+| 03-08 | `desktop/app/globals.css` | 新增 legend-phases 动画样式 |
+| 03-08 | `desktop/start-dev.sh` | 启动前自动 kill 3000 端口 |
+| 03-08 | `docs/troubleshooting.md` | 扩展至 Issue #1-#9 全量故障记录 |
 
 ---
 
