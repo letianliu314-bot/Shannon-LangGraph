@@ -1073,6 +1073,8 @@ def _execute_single_task(
     refined: Dict[str, Any],
     task: Dict[str, Any],
     previous_results: Dict[str, Any] | None = None,
+    strict_output: bool = False,
+    quality_mode: str = "best_effort",
 ) -> Tuple[str, Dict[str, Any]]:
     # 中文注释：执行单个子任务（调用 LLM Service /agent/run）
     task_id = str(task.get("id", ""))
@@ -1083,6 +1085,8 @@ def _execute_single_task(
             strategy=strategy,
             refined=refined,
             task=task,
+            strict_output=strict_output,
+            quality_mode=quality_mode,
             previous_results=previous_results or {},
         )
         status = result.get("status", "error")
@@ -1137,6 +1141,8 @@ def execute_node(state: ResearchState) -> Dict[str, Any]:
     user_request = state.get("user_request", "")
     strategy = _normalize_strategy(state.get("strategy", "deep"))
     refined = dict(state.get("refined", {}))
+    strict_output = bool(state.get("strict_output", False))
+    quality_mode = str(state.get("quality_mode", "best_effort") or "best_effort")
 
     task_map = {task_id: dict(task) for task_id, task in dict(state.get("task_map", {})).items()}
     task_results = dict(state.get("task_results", {}))
@@ -1194,6 +1200,8 @@ def execute_node(state: ResearchState) -> Dict[str, Any]:
                     refined,
                     task,
                     _build_previous_results_for_task(task, task_results),
+                    strict_output,
+                    quality_mode,
                 ): str(task.get("id"))
                 for task in tasks_to_run
             }

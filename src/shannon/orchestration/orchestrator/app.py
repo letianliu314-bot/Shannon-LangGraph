@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import queue
+import threading
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
@@ -28,11 +30,18 @@ from shannon.storage.redis.session_manager import session_manager
 from shannon.storage.redis.streaming_manager import Event, streaming_manager
 from shannon.utils.logger import setup_logging
 
+logger = logging.getLogger(__name__)
+
 # 中文注释：编排层 FastAPI 应用（LangGraph + Checkpoint）
-app = FastAPI(title="Shannon Orchestrator", version="0.2.0")
+app = FastAPI(title="Shannon Orchestrator", version="0.3.0")
 
 # 中文注释：SQLite Checkpointer 的上下文管理器
 _sqlite_cm = None
+
+# 中文注释：后台运行注册表 — 追踪每个 thread_id 的执行状态
+# key=thread_id, value={"status": "running"|"completed"|"failed", "error": str|None}
+_run_registry: Dict[str, Dict[str, Any]] = {}
+_run_registry_lock = threading.Lock()
 
 
 # 中文注释：函数 _create_checkpointer 的入口
@@ -95,7 +104,11 @@ def on_shutdown() -> None:
 # 中文注释：健康检查
 @app.get("/healthz")
 def healthz():
-    return {"status": "ok"}
+    _pg = getattr(app.state, "pg_client", None)
+    return {
+        "status": "ok",
+        "pg_available": _pg.available if _pg else False,
+    }
 
 
 # 中文注释：列出可用模板工作流
@@ -114,10 +127,17 @@ def workflow_template(template_name: str):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-# 中文注释：运行一次完整研究流程
-@app.post("/runs")
+# 中文注释：运行一次完整研究流程（异步：立即返回 202，后台执行 graph.invoke）
+@app.post("/runs", status_code=202)
 def run(req: Dict[str, Any]):
     thread_id = str(req.get("thread_id") or "demo-thread")
+
+    # 中文注释：检查该 thread 是否已有正在执行的 run，防止重复提交
+    with _run_registry_lock:
+        existing = _run_registry.get(thread_id)
+        if existing and existing["status"] == "running":
+            raise HTTPException(status_code=409, detail=f"thread {thread_id} 已有运行中的工作流")
+
     workflow_template_ref = str(req.get("workflow_template") or req.get("template") or "").strip()
     workflow_context = req.get("workflow_context") or req.get("context") or {}
     if workflow_context is None:
@@ -184,6 +204,9 @@ def run(req: Dict[str, Any]):
         # 中文注释：并发上限、任务上限可由调用方覆盖
         "max_concurrency": int(req.get("max_concurrency", 3) or 3),
         "max_tasks": int(req.get("max_tasks", 6) or 6),
+        # 中文注释：质量控制参数，传透至 LLM Service
+        "strict_output": bool(req.get("strict_output", False)),
+        "quality_mode": str(req.get("quality_mode", "best_effort") or "best_effort"),
         # 中文注释：decompose 阶段的 HTTP 等待与重试策略（开发阶段默认更宽松）
         "decompose_timeout_seconds": decompose_timeout_seconds,
         "decompose_http_retries": decompose_http_retries,
@@ -234,47 +257,73 @@ def run(req: Dict[str, Any]):
         ),
     )
 
-    try:
-        out = app.state.graph.invoke(state_in, config={"configurable": {"thread_id": thread_id}})
+    # 中文注释：注册后台运行并启动后台线程
+    with _run_registry_lock:
+        _run_registry[thread_id] = {"status": "running", "error": None}
 
-        # 中文注释：写入会话上下文与消息
-        app.state.session_manager.update_context(thread_id, "last_state", out)
-        app.state.session_manager.add_message(
-            session_id=thread_id,
-            role="assistant",
-            content=str((out.get("final_output") or {}).get("summary") or "workflow completed"),
-            metadata={"status": "completed"},
-        )
+    def _background_run() -> None:
+        """在后台线程中执行 graph.invoke，完成后更新注册表和持久化层。"""
+        try:
+            out = app.state.graph.invoke(state_in, config={"configurable": {"thread_id": thread_id}})
 
-        # 中文注释：长期状态落库（PostgreSQL）
-        app.state.pg_client.save_thread_state(thread_id, out, status="completed")
+            # 中文注释：写入会话上下文与消息
+            app.state.session_manager.update_context(thread_id, "last_state", out)
+            app.state.session_manager.add_message(
+                session_id=thread_id,
+                role="assistant",
+                content=str((out.get("final_output") or {}).get("summary") or "workflow completed"),
+                metadata={"status": "completed"},
+            )
 
-        # 中文注释：发布完成事件
-        app.state.streaming_manager.publish(
-            thread_id,
-            Event(
-                workflow_id=thread_id,
-                type="WORKFLOW_COMPLETED",
-                agent_id="orchestrator",
-                message="workflow completed",
-                payload={"done": bool(out.get("done")), "error_count": len(out.get("errors", []))},
-            ),
-        )
-        return {"thread_id": thread_id, "state": out}
-    except Exception as exc:  # noqa: BLE001
-        fail_payload = {"error": f"{type(exc).__name__}: {str(exc)}"}
-        app.state.pg_client.save_thread_state(thread_id, {"error": fail_payload["error"]}, status="failed")
-        app.state.streaming_manager.publish(
-            thread_id,
-            Event(
-                workflow_id=thread_id,
-                type="WORKFLOW_FAILED",
-                agent_id="orchestrator",
-                message="workflow failed",
-                payload=fail_payload,
-            ),
-        )
-        raise
+            # 中文注释：长期状态落库（PostgreSQL）
+            app.state.pg_client.save_thread_state(thread_id, out, status="completed")
+
+            # 中文注释：发布完成事件
+            app.state.streaming_manager.publish(
+                thread_id,
+                Event(
+                    workflow_id=thread_id,
+                    type="WORKFLOW_COMPLETED",
+                    agent_id="orchestrator",
+                    message="workflow completed",
+                    payload={"done": bool(out.get("done")), "error_count": len(out.get("errors", []))},
+                ),
+            )
+            with _run_registry_lock:
+                _run_registry[thread_id] = {"status": "completed", "error": None}
+            logger.info("workflow %s completed", thread_id)
+        except Exception as exc:  # noqa: BLE001
+            fail_payload = {"error": f"{type(exc).__name__}: {str(exc)}"}
+            app.state.pg_client.save_thread_state(thread_id, {"error": fail_payload["error"]}, status="failed")
+            app.state.streaming_manager.publish(
+                thread_id,
+                Event(
+                    workflow_id=thread_id,
+                    type="WORKFLOW_FAILED",
+                    agent_id="orchestrator",
+                    message="workflow failed",
+                    payload=fail_payload,
+                ),
+            )
+            with _run_registry_lock:
+                _run_registry[thread_id] = {"status": "failed", "error": fail_payload["error"]}
+            logger.exception("workflow %s failed", thread_id)
+
+    thread = threading.Thread(target=_background_run, name=f"run-{thread_id}", daemon=True)
+    thread.start()
+
+    # 中文注释：立即返回 202 Accepted，前端通过 SSE/polling 获取进度
+    return {"thread_id": thread_id, "status": "accepted"}
+
+
+# 中文注释：查询某线程的后台运行状态
+@app.get("/threads/{thread_id}/run_status")
+def run_status(thread_id: str):
+    with _run_registry_lock:
+        entry = _run_registry.get(thread_id)
+    if entry is None:
+        return {"thread_id": thread_id, "run_status": "unknown"}
+    return {"thread_id": thread_id, "run_status": entry["status"], "error": entry.get("error")}
 
 
 # 中文注释：查询某线程的 checkpoint 列表
@@ -357,5 +406,6 @@ async def thread_events_stream(request: Request, thread_id: str, since_seq: int 
 def current_state_db(thread_id: str):
     state_row = app.state.pg_client.get_thread_state(thread_id)
     if state_row is None:
-        raise HTTPException(status_code=404, detail="state 不存在")
+        # 中文注释：工作流执行期间 PG 可能尚无数据，返回空而非 404，减少日志噪音
+        return {"thread_id": thread_id, "state": None}
     return {"thread_id": thread_id, "state": state_row}

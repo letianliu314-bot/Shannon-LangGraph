@@ -62,6 +62,10 @@ class ResearchState(TypedDict, total=False):
     task_results: Dict[str, Dict[str, Any]]
     errors: List[Dict[str, Any]]
 
+    # 中文注释：质量控制参数
+    strict_output: bool  # True 时禁用转换任务的确定性 fallback 短路
+    quality_mode: str  # "strict" | "best_effort"
+
     # 中文注释：预算与流程控制
     budget: Dict[str, Any]  # max_token/used_token/max_retry
     done: bool

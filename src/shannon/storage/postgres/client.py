@@ -111,19 +111,34 @@ class PostgresClient:
             self._available = False
             return
 
+        import time
+
+        max_retries = int(os.getenv("POSTGRES_CONNECT_RETRIES", "10"))
+        retry_interval = float(os.getenv("POSTGRES_CONNECT_INTERVAL", "3"))
+
         try:
             import psycopg  # type: ignore
-
             self._driver = psycopg
-            with psycopg.connect(self.dsn) as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT 1")
-                    cur.fetchone()
-            self._available = True
-        except Exception:
-            # 中文注释：连接失败时自动降级，不影响主流程
+        except ImportError:
             self._driver = None
             self._available = False
+            return
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                with psycopg.connect(self.dsn) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1")
+                        cur.fetchone()
+                self._available = True
+                return
+            except Exception:
+                if attempt < max_retries:
+                    time.sleep(retry_interval)
+
+        # 中文注释：全部重试失败后自动降级，不影响主流程
+        self._driver = None
+        self._available = False
 
     @property
     def available(self) -> bool:

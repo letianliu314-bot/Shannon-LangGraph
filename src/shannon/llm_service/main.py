@@ -139,6 +139,12 @@ class AgentRunRequest(ShannonBaseModel):
     previous_results: Dict[str, Any] = Field(default_factory=dict)
     max_search_rounds: int = 2
     per_round_fetch_limit: int = 3
+    # 中文注释：strict_output=true 时，转换任务不走确定性短路 fallback，强制调用 LLM
+    strict_output: bool = False
+    # 中文注释：quality_mode 控制低价值输出的处理策略
+    #   "best_effort" (默认)：允许 fallback 但写入 degraded 标记
+    #   "strict"：保持 error 状态，让编排层触发重试
+    quality_mode: str = "best_effort"
 
 
 # 中文注释：类 AgentRunResponse 的入口
@@ -381,6 +387,12 @@ def _extract_query_terms(text: str, max_terms: int = 8) -> List[str]:
 
 
 def _is_transform_only_task(task: TaskContract) -> bool:
+    """判定任务是否为纯格式转换/汇总类任务（不需要新检索）。
+
+    收窄匹配条件：仅保留强信号（structured_jsonl deliverable、明确 required_fields、
+    reformat/convert 等关键词），移除泛词 "generate" 以避免误判需要 LLM
+    实质生成的任务。
+    """
     text = f"{task.title} {task.goal} {task.description}".lower()
     output_type = str(task.output_format.get("type") or "").lower() if isinstance(task.output_format, dict) else ""
     required_fields = (
@@ -390,21 +402,18 @@ def _is_transform_only_task(task: TaskContract) -> bool:
     )
     deliverable = str(task.deliverable or "").lower()
 
-    # 中文注释：结构化 QA/JSONL 任务优先视为转换任务，避免误触发新检索
-    if {"line_id", "question", "answer"} <= required_fields:
-        return True
-    if output_type == "structured" and ("jsonl" in text or "question-answer" in text or "training sample" in text):
-        return True
-    if "jsonl" in text and ("generate" in text or "training" in text):
-        return True
+    # 中文注释：结构化 QA/JSONL 任务 —— 仅当 deliverable 明确为 structured_jsonl
+    # 或 required_fields 完整匹配 QA 三元组时才视为转换任务
     if "structured_jsonl" in deliverable:
         return True
+    if {"line_id", "question", "answer"} <= required_fields:
+        return True
 
+    # 中文注释：强信号关键词匹配（去掉了泛词 generate / format / summarize，保留 jsonl）
     transform_markers = [
-        "generate",
         "jsonl",
-        "format",
-        "summarize",
+        "reformat",
+        "convert format",
         "sort",
         "select the top",
         "extract the abstract",
@@ -502,31 +511,42 @@ def _converge_task_dependencies(tasks: List[TaskContract], max_layers: int = 2) 
         task.deps = list(dict.fromkeys(deps))
 
     # 中文注释：第二轮限制深度：最多两层（采集层 + 汇总层），即依赖只能指向根层任务
+    # 特例：转换任务允许依赖浅层汇总任务（仅依赖根层的汇总任务），形成
+    # research → synthesis → transform 的标准三层流水线
     if max_layers <= 2:
         root_ids = [str(task.id) for task in tasks if not task.deps]
         root_set = set(root_ids)
         synthesis_set = set(synthesis_ids)
+        task_by_id = {str(t.id): t for t in tasks}
+        shallow_synthesis: set = set()
+        for tid in synthesis_set:
+            t = task_by_id.get(tid)
+            if t is not None and all(dep in root_set for dep in (t.deps or [])):
+                shallow_synthesis.add(tid)
         for task in tasks:
             if not task.deps:
                 continue
-            # 中文注释：JSONL/结构化转换任务允许依赖汇总任务；其余任务仅可依赖根层任务
+            # 中文注释：JSONL/结构化转换任务允许依赖浅层汇总任务 + 根层任务
             if _is_transform_only_task(task):
-                allowed = root_set | synthesis_set
+                allowed = root_set | shallow_synthesis
                 task.deps = list(dict.fromkeys([dep for dep in task.deps if dep in allowed]))
             else:
                 task.deps = list(dict.fromkeys([dep for dep in task.deps if dep in root_set]))
 
     # 中文注释：转换/汇总任务若无依赖，自动依赖采集层，避免无上游输入导致空转
+    # 仅挂接根层任务，防止重新引入超 2 层链
+    root_set_post = {str(task.id) for task in tasks if not task.deps}
     for task in tasks:
         task_id = str(task.id)
         if not allow_dependency.get(task_id, False):
             continue
         if task.deps:
             continue
-        fallback = [dep for dep in source_ids if dep != task_id]
-        preferred = [dep for dep in synthesis_ids if dep != task_id]
-        if fallback and (_is_transform_only_task(task) or _is_synthesis_task(task)):
-            task.deps = preferred or fallback
+        # 中文注释：优先选择根层的汇总任务，其次选择采集层根任务
+        preferred_roots = [dep for dep in synthesis_ids if dep != task_id and dep in root_set_post]
+        fallback_roots = [dep for dep in source_ids if dep != task_id and dep in root_set_post]
+        if _is_transform_only_task(task) or _is_synthesis_task(task):
+            task.deps = preferred_roots or fallback_roots
 
     for task in tasks:
         task_id = str(task.id)
@@ -1024,6 +1044,38 @@ def _decompose_generation_limits(model_tier: str) -> Tuple[int, float]:
         request_timeout = default_timeouts[tier]
 
     return max(256, min(max_tokens, 8000)), max(10.0, min(request_timeout, 900.0))
+
+
+def _run_request_timeout(model_tier: str) -> float:
+    # 中文注释：按 tier 返回 /agent/run 的 OpenAI SDK 请求超时，避免而复杂 prompt 超时
+    tier = _normalize_model_tier(model_tier) or ModelTier.SMALL.value
+    default_timeouts = {
+        ModelTier.SMALL.value: 90.0,
+        ModelTier.MEDIUM.value: 120.0,
+        ModelTier.LARGE.value: 180.0,
+    }
+    env_raw = os.getenv(f"OPENAI_RUN_TIMEOUT_SECONDS_{tier.upper()}", "").strip()
+    if not env_raw:
+        env_raw = os.getenv("OPENAI_RUN_TIMEOUT_SECONDS", "").strip()
+    try:
+        return max(30.0, min(float(env_raw), 600.0)) if env_raw else default_timeouts.get(tier, 120.0)
+    except Exception:  # noqa: BLE001
+        return default_timeouts.get(tier, 120.0)
+
+
+def _responses_request_timeout(model_tier: str) -> float:
+    # 中文注释：/v1/responses （finalize）的 OpenAI SDK 超时，汇总阶段 prompt 更长需要更宽松超时
+    tier = _normalize_model_tier(model_tier) or ModelTier.LARGE.value
+    default_timeouts = {
+        ModelTier.SMALL.value: 90.0,
+        ModelTier.MEDIUM.value: 120.0,
+        ModelTier.LARGE.value: 240.0,
+    }
+    env_raw = os.getenv("OPENAI_RESPONSES_TIMEOUT_SECONDS", "").strip()
+    try:
+        return max(30.0, min(float(env_raw), 600.0)) if env_raw else default_timeouts.get(tier, 180.0)
+    except Exception:  # noqa: BLE001
+        return default_timeouts.get(tier, 180.0)
 
 
 def _request_expects_jsonl(user_request: str) -> bool:
@@ -1529,11 +1581,13 @@ def complete(req: CompletionRequest) -> CompletionResponse:
 def responses(req: ResponsesRequest) -> ResponsesResponse:
     resolved_model = resolve_model(req.model_tier, req.model)
     client = OpenAIClient()
+    resp_timeout = _responses_request_timeout(req.model_tier or "large")
     content = client.complete(
         req.prompt,
         model=resolved_model,
         temperature=req.temperature,
         system_prompt=req.system_prompt,
+        request_timeout=resp_timeout,
     )
     return ResponsesResponse(content=content, model=resolved_model, model_tier=req.model_tier)
 
@@ -1786,8 +1840,9 @@ def agent_run(req: AgentRunRequest) -> AgentRunResponse:
             retrieval_trace["warnings"] = warnings
             quality_status = "ok"
 
-    # 中文注释：纯转换任务优先走确定性格式化输出，避免不必要的大模型耗时与不稳定
-    if _is_transform_only_task(task) and previous_results:
+    # 中文注释：纯转换任务的确定性短路 fallback
+    # strict_output=true 时禁用短路，强制走 LLM 生成
+    if _is_transform_only_task(task) and previous_results and not req.strict_output:
         if _is_structured_task(task):
             deterministic = _build_structured_fallback_content(
                 task=task,
@@ -1855,7 +1910,8 @@ def agent_run(req: AgentRunRequest) -> AgentRunResponse:
     )
 
     client = OpenAIClient()
-    content = client.complete(prompt=prompt, model=model, temperature=0.2, system_prompt=system_prompt)
+    run_timeout = _run_request_timeout(task.model_tier)
+    content = client.complete(prompt=prompt, model=model, temperature=0.2, system_prompt=system_prompt, request_timeout=run_timeout)
     is_bad_content = _is_low_value_content(content)
     status = "ok" if content and not _is_model_error_content(content) and not is_bad_content else "error"
     error_message = ""
@@ -1881,18 +1937,29 @@ def agent_run(req: AgentRunRequest) -> AgentRunResponse:
             error_message = ""
             quality_status = "ok"
 
-    # 中文注释：非转换任务低价值输出降级为可用摘要，保证并行任务可持续推进
+    # 中文注释：非转换任务低价值输出降级策略，受 quality_mode 控制
+    #   strict  → 保持 error，编排层将触发重试
+    #   best_effort → 允许 fallback，但写入 degraded 标记而非伪装为 ok
     if status == "error" and error_message in {"low_relevance_output", "empty_output"} and not _is_transform_only_task(task):
-        content = _build_resilient_fallback_content(
-            task=task,
-            user_request=req.user_request,
-            previous_results=previous_results,
-            citations=citations,
-            retrieval_trace=retrieval_trace,
-        )
-        status = "ok"
-        error_message = ""
-        quality_status = "ok"
+        if req.quality_mode == "strict":
+            pass  # 保持 error/error_message 不变，编排层会重试
+        else:
+            fallback_content = _build_resilient_fallback_content(
+                task=task,
+                user_request=req.user_request,
+                previous_results=previous_results,
+                citations=citations,
+                retrieval_trace=retrieval_trace,
+            )
+            content = fallback_content
+            status = "ok"
+            error_message = ""
+            quality_status = "degraded"
+            # 中文注释：在 retrieval_trace 中保留降级原因，供编排层感知
+            if isinstance(retrieval_trace.get("warnings"), list):
+                retrieval_trace["warnings"].append("fallback_degraded")
+            else:
+                retrieval_trace["warnings"] = ["fallback_degraded"]
 
     # 中文注释：将本次任务结果写入向量记忆（Qdrant 不可用时自动回退内存）
     if content and status == "ok" and enable_vector_memory:

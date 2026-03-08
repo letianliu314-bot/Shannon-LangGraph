@@ -1,0 +1,387 @@
+# Shannon 后端 — 修改历史记录
+
+> 最后更新：2026-03-08  
+> 按日期记录后端（编排层 / LLM 服务 / 基础设施）的所有修改
+
+---
+
+## 目录
+
+- [Shannon 后端 — 修改历史记录](#shannon-后端--修改历史记录)
+  - [目录](#目录)
+  - [2026-03-04：首次部署调试 \& 生产修复](#2026-03-04首次部署调试--生产修复)
+    - [1. PostgreSQL 持久化降级修复](#1-postgresql-持久化降级修复)
+    - [2. GPT-5.1 超时链路修复](#2-gpt-51-超时链路修复)
+    - [3. state\_db 端点 404 日志噪音修复](#3-state_db-端点-404-日志噪音修复)
+    - [4. WatchFiles 误触发 reload 修复](#4-watchfiles-误触发-reload-修复)
+    - [5. Docker 构建文件补全](#5-docker-构建文件补全)
+    - [6. healthz 端点增加 PG 诊断](#6-healthz-端点增加-pg-诊断)
+  - [2026-03-05：无后端代码变更](#2026-03-05无后端代码变更)
+  - [2026-03-08：Resilient Fallback 误触发修复 \& 质量控制策略](#2026-03-08resilient-fallback-误触发修复--质量控制策略)
+  - [附录：后端修改文件速查](#附录后端修改文件速查)
+  - [附录：环境变量速查](#附录环境变量速查)
+
+---
+
+## 2026-03-04：首次部署调试 & 生产修复
+
+本日修复了从本地开发到 Docker 部署过程中暴露的 6 个后端问题。
+
+### 1. PostgreSQL 持久化降级修复
+
+**问题**: `POST /runs` 返回 200 且包含完整结果，但 Postgres `run_states_latest` 表中 0 行记录。重启编排层后数据丢失。
+
+**根因**:
+- Docker `depends_on` 只等容器 start 不等 ready → Postgres 未 ready 时 `PostgresClient` 连接失败 → `_available = False` → 永久降级到 `InMemoryPostgres`
+- 本机 uvicorn 残留进程占用 8000 端口，curl 请求被旧进程截获
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `docker-compose.yml` | 为 postgres 添加 `healthcheck`（`pg_isready -U postgres -d shannon`, interval 3s, retries 10）；orchestration 服务添加 `depends_on: condition: service_healthy` |
+
+**关键配置**:
+```yaml
+postgres:
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres -d shannon"]
+    interval: 3s
+    timeout: 3s
+    retries: 10
+
+orchestration:
+  depends_on:
+    postgres:
+      condition: service_healthy
+```
+
+**验证**:
+```bash
+docker exec -it shannon-postgres-1 psql -U postgres -d shannon -c "select now();"
+curl -s http://127.0.0.1:8000/healthz   # 预期: {"status":"ok","pg_available":true}
+```
+
+---
+
+### 2. GPT-5.1 超时链路修复
+
+**问题**: `AGENT_CALL_STARTED` 后 LLM 日志显示 `[error:gpt-5.1] APITimeoutError: Request timed out.`，工作流无法完成。
+
+**根因**: `/agent/run` 和 `/v1/responses` 端点调用 `OpenAIClient.complete()` 时未传 `request_timeout`，落入 SDK 默认 45s。gpt-5.1 复杂任务需 60-180s。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/llm_service/main.py` | 新增 `_run_request_timeout()` 和 `_responses_request_timeout()` 函数 |
+| `.env` | 新增 `OPENAI_TIMEOUT_SECONDS=120` |
+
+**新增函数**:
+
+```python
+def _run_request_timeout(model_tier: str) -> float:
+    """按 model tier 返回 /agent/run 的 OpenAI SDK 请求级超时。"""
+    # 环境变量覆盖: OPENAI_RUN_TIMEOUT_SECONDS / OPENAI_RUN_TIMEOUT_SECONDS_{TIER}
+    # 默认值: small=90s, medium=120s, large=180s
+    # clamp: [30s, 600s]
+
+def _responses_request_timeout(model_tier: str) -> float:
+    """按 model tier 返回 /v1/responses 的 OpenAI SDK 请求级超时。"""
+    # 环境变量覆盖: OPENAI_RESPONSES_TIMEOUT_SECONDS
+    # 默认值: small=90s, medium=120s, large=240s
+    # clamp: [30s, 600s]
+```
+
+**代码调用点改动**:
+```python
+# /agent/run — 修复前
+content = client.complete(prompt=prompt, model=model, temperature=0.2, system_prompt=system_prompt)
+
+# /agent/run — 修复后
+run_timeout = _run_request_timeout(task.model_tier)
+content = client.complete(prompt=prompt, model=model, temperature=0.2,
+                          system_prompt=system_prompt, request_timeout=run_timeout)
+
+# /v1/responses — 修复后
+resp_timeout = _responses_request_timeout(req.model_tier or "large")
+content = client.complete(req.prompt, model=resolved_model, temperature=req.temperature,
+                          system_prompt=req.system_prompt, request_timeout=resp_timeout)
+```
+
+**超时配置全景**:
+
+| 环节 | 配置项 | 修复前 | 修复后 |
+|---|---|---|---|
+| OpenAI SDK 客户端级 | `OPENAI_TIMEOUT_SECONDS` | 45s | **120s** |
+| `/agent/run` (large) | `_run_request_timeout()` | 45s | **180s** |
+| `/v1/responses` (large) | `_responses_request_timeout()` | 45s | **240s** |
+| `/agent/decompose` (large) | `_decompose_generation_limits()` | 120s | 120s（原已正确） |
+| 编排层 httpx → LLM Service | `ORCH_LLM_SERVICE_TIMEOUT_SECONDS` | 120s | 120s |
+| 编排层 httpx → responses | `ORCH_LLM_SERVICE_TIMEOUT_RESPONSES_SECONDS` | 300s | 300s |
+
+---
+
+### 3. state_db 端点 404 日志噪音修复
+
+**问题**: 编排层日志中 `/threads/{id}/state_db` 持续输出大量 404 Not Found（前端每 1.5s 轮询，工作流运行期间 PG 尚无数据）。
+
+**根因**: 原端点在未找到数据时抛出 `HTTPException(404)`，但 `save_thread_state()` 仅在 `POST /runs` 完成后才写入 PG。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/orchestration/orchestrator/app.py` | `state_db` 端点未找到数据时返回 `{"thread_id": ..., "state": null}` 而非 404 |
+
+```python
+# 修复前
+if state_row is None:
+    raise HTTPException(status_code=404, detail="state 不存在")
+
+# 修复后
+if state_row is None:
+    return {"thread_id": thread_id, "state": None}
+```
+
+---
+
+### 4. WatchFiles 误触发 reload 修复
+
+**问题**: `uvicorn --reload` 检测到 `tests/`、`desktop/`、`migrations/` 变更，触发不必要的服务重启。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `Makefile` | `run-orchestration` 和 `run-llm` 目标添加 `--reload-exclude` |
+
+```makefile
+# 修复前
+PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.orchestration.main:app --reload --port 8000
+
+# 修复后
+PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.orchestration.main:app --reload --port 8000 \
+  --reload-exclude 'tests/*' --reload-exclude 'desktop/*' --reload-exclude 'migrations/*'
+```
+
+LLM Service `run-llm` 目标同样添加了排除规则。
+
+---
+
+### 5. Docker 构建文件补全
+
+**问题**: 容器内找不到 `migrations/postgres/*.sql` 和配置文件，自动迁移和配置加载失败。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `deploy/docker/Dockerfile.orchestration` | 添加 `COPY migrations ./migrations` 和 `COPY config ./config` |
+| `deploy/docker/Dockerfile.llm_service` | 同上 |
+
+```dockerfile
+COPY src ./src
+COPY migrations ./migrations    # ← 新增
+COPY config ./config            # ← 新增
+```
+
+---
+
+### 6. healthz 端点增加 PG 诊断
+
+**问题**: 原 `/healthz` 仅返回 `{"status":"ok"}`，无法判断 Postgres 是否正常连接。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/orchestration/orchestrator/app.py` | `/healthz` 返回 `pg_available` 字段 |
+
+```python
+@app.get("/healthz")
+def healthz():
+    _pg = getattr(app.state, "pg_client", None)
+    return {"status": "ok", "pg_available": _pg.available if _pg else False}
+```
+
+---
+
+## 2026-03-05：无后端代码变更
+
+本日工作集中在**前端 Graph 模块三层架构重构**，后端代码无任何改动。
+
+前端修改详情见 [troubleshooting.md → Issue #8](troubleshooting.md#issue-8前端-graph-模块三层架构重构2026-03-05)。
+
+**关联影响**: 前端中 `GraphLegend` 组件改为通过 `phases: PhaseStatusMap` prop 接收工作流阶段数据，该数据仍来自后端 SSE 推送的 `NODE_STARTED` / `NODE_COMPLETED` / `NODE_FAILED` 事件。后端推送逻辑未变。
+
+---
+
+## 2026-03-08：Resilient Fallback 误触发修复 & 质量控制策略
+
+本日修复了 `POST /runs` 执行后 task 未真正调度 LLM 而全部走 resilient fallback 模板化输出的问题，并引入 `strict_output` / `quality_mode` 两个质量控制参数。
+
+### 1. 收窄 `_is_transform_only_task()` 匹配条件
+
+**问题**: 该函数使用 `"generate"`、`"format"`、`"summarize"` 等泛词作为匹配标记，导致大量需要 LLM 实质生成的任务被误判为"纯转换任务"，跳过 LLM 调用直接返回模板化文本。
+
+**根因**: transform_markers 列表过宽；`"generate"` 几乎会匹配任何含 "Generate" 标题的任务（如 "Generate JSONL QA"），即使该任务需要 LLM 基于上游证据做实质内容生成。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/llm_service/main.py` | 移除泛词 `"generate"`、`"format"`、`"summarize"`、`"training sample"`；保留强信号 `"jsonl"`、`"reformat"`、`"convert format"`、`"sort"`、`"select the top"`、`"extract the abstract"` |
+
+**修改前**:
+```python
+transform_markers = [
+    "generate", "jsonl", "format", "summarize",
+    "sort", "select the top", "extract the abstract", "training sample",
+]
+```
+
+**修改后**:
+```python
+transform_markers = [
+    "jsonl", "reformat", "convert format",
+    "sort", "select the top", "extract the abstract", "training sample",
+]
+```
+
+### 2. 转换任务确定性 fallback 短路受 `strict_output` 控制
+
+**问题**: `_is_transform_only_task()` 判定为 True 且有 `previous_results` 时，`/agent/run` 无条件跳过 LLM 调用，直接返回模板化文本。用户无法强制要求 LLM 执行真实生成。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/llm_service/main.py` | `AgentRunRequest` 新增 `strict_output: bool = False`；转换任务短路仅在 `strict_output=False` 时生效 |
+| `src/shannon/orchestration/orchestrator/state.py` | `ResearchState` 新增 `strict_output: bool` 字段 |
+| `src/shannon/orchestration/orchestrator/app.py` | `POST /runs` 入参透传 `strict_output` |
+| `src/shannon/orchestration/orchestrator/graph.py` | `execute_node` → `_execute_single_task` 传递 `strict_output` |
+| `src/shannon/orchestration/orchestrator/llm_service_client.py` | `run_task()` HTTP 请求体增加 `strict_output` |
+
+```python
+# 修复前
+if _is_transform_only_task(task) and previous_results:
+    # 无条件走确定性 fallback
+
+# 修复后
+if _is_transform_only_task(task) and previous_results and not req.strict_output:
+    # 仅非 strict 模式走确定性 fallback
+```
+
+### 3. 低价值输出走 `quality_mode` 策略
+
+**问题**: LLM 返回低价值内容（匹配 `_is_low_value_content()`）时，`status` 从 `"error"` 被静默改写为 `"ok"`、`quality_status` 设为 `"ok"`。编排层的 `verify_merge_node` 看到 `status="ok"` 不会触发重试，低质量输出被静默接受并传递给下游。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/llm_service/main.py` | `AgentRunRequest` 新增 `quality_mode: str = "best_effort"`；新增分支策略 |
+| `src/shannon/orchestration/orchestrator/state.py` | `ResearchState` 新增 `quality_mode: str` 字段 |
+| `src/shannon/orchestration/orchestrator/app.py` | `POST /runs` 入参透传 `quality_mode` |
+| `src/shannon/orchestration/orchestrator/graph.py` | `execute_node` → `_execute_single_task` 传递 `quality_mode` |
+| `src/shannon/orchestration/orchestrator/llm_service_client.py` | `run_task()` HTTP 请求体增加 `quality_mode` |
+
+```python
+# 修复前
+if status == "error" and error_message in {"low_relevance_output", "empty_output"}:
+    content = _build_resilient_fallback_content(...)
+    status = "ok"
+    quality_status = "ok"  # 伪装为成功
+
+# 修复后
+if status == "error" and error_message in {"low_relevance_output", "empty_output"}:
+    if req.quality_mode == "strict":
+        pass  # 保持 error，编排层触发重试
+    else:  # best_effort
+        content = _build_resilient_fallback_content(...)
+        status = "ok"
+        quality_status = "degraded"  # 标记为降级而非伪装 ok
+        retrieval_trace["warnings"].append("fallback_degraded")
+```
+
+### 4. 依赖收敛深度限制器修复
+
+**问题**: 收窄 `_is_transform_only_task()` 后，`_converge_task_dependencies` 的深度限制器不再允许 research → synthesis → transform 标准三层 DAG，导致 JSONL 任务与 merge 任务的依赖链被错误打断。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/llm_service/main.py` | 引入 shallow_synthesis（仅依赖根层的汇总任务）概念，允许 transform 任务依赖浅层汇总任务 |
+| `tests/unit/test_llm_service_main.py` | 更新 DAG 深度断言：从严格 2 层改为验证深度 ≤ 3 + 无超 3 层链 |
+
+```python
+# 修复后：允许 research → synthesis → transform 三层流水线
+task_by_id = {str(t.id): t for t in tasks}
+shallow_synthesis = set()
+for tid in synthesis_set:
+    t = task_by_id.get(tid)
+    if t is not None and all(dep in root_set for dep in (t.deps or [])):
+        shallow_synthesis.add(tid)
+
+if _is_transform_only_task(task):
+    allowed = root_set | shallow_synthesis  # 可依赖浅层汇总
+else:
+    allowed = root_set  # 仅依赖根层
+```
+
+**验证**: 全部 42 个单元测试通过。
+
+**调用示例**:
+```bash
+# 默认行为（向后兼容）
+curl -X POST http://127.0.0.1:8000/runs -d '{"user_request": "...", "strategy": "deep"}'
+
+# 强制 LLM 生成 + 严格质量控制
+curl -X POST http://127.0.0.1:8000/runs -d '{
+  "user_request": "...",
+  "strategy": "deep",
+  "strict_output": true,
+  "quality_mode": "strict"
+}'
+```
+
+---
+
+## 附录：后端修改文件速查
+
+| 日期 | 文件 | 改动类型 |
+|---|---|---|
+| 03-04 | `docker-compose.yml` | postgres healthcheck + depends_on |
+| 03-04 | `deploy/docker/Dockerfile.orchestration` | COPY migrations + config |
+| 03-04 | `deploy/docker/Dockerfile.llm_service` | COPY migrations + config |
+| 03-04 | `src/shannon/orchestration/orchestrator/app.py` | healthz PG 诊断 + state_db 返回 null 替代 404 |
+| 03-04 | `src/shannon/llm_service/main.py` | 新增 `_run_request_timeout()` + `_responses_request_timeout()` |
+| 03-04 | `Makefile` | `--reload-exclude` 排除非源码目录 |
+| 03-04 | `.env` | `OPENAI_TIMEOUT_SECONDS=120` |
+| 03-08 | `src/shannon/llm_service/main.py` | 收窄 transform 匹配 + strict_output/quality_mode + 依赖收敛修复 |
+| 03-08 | `src/shannon/orchestration/orchestrator/state.py` | ResearchState 新增 strict_output / quality_mode 字段 |
+| 03-08 | `src/shannon/orchestration/orchestrator/app.py` | POST /runs 透传 strict_output / quality_mode |
+| 03-08 | `src/shannon/orchestration/orchestrator/graph.py` | execute_node 透传 strict_output / quality_mode |
+| 03-08 | `src/shannon/orchestration/orchestrator/llm_service_client.py` | run_task() 请求体增加 strict_output / quality_mode |
+| 03-08 | `tests/unit/test_llm_service_main.py` | DAG 深度断言更新为 ≤3 层 + 祖父节点校验 |
+
+---
+
+## 附录：环境变量速查
+
+```bash
+# 必要配置
+OPENAI_API_KEY=sk-xxx
+
+# 超时配置（03-04 新增/修改）
+OPENAI_TIMEOUT_SECONDS=120                     # SDK 客户端级超时（默认 45s → 120s）
+# OPENAI_RUN_TIMEOUT_SECONDS=180               # /agent/run 超时覆盖（默认按 tier 自动）
+# OPENAI_RESPONSES_TIMEOUT_SECONDS=240          # /v1/responses 超时覆盖（默认按 tier 自动）
+
+# 数据层
+POSTGRES_DSN=postgresql://postgres:postgres@localhost:5432/shannon
+REDIS_URL=redis://localhost:6379/0
+POSTGRES_AUTO_MIGRATE=true
+```

@@ -13,11 +13,11 @@ install:
 
 run-orchestration:
 	@echo "启动编排层"
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.orchestration.main:app --reload --port 8000
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.orchestration.main:app --reload --port 8000 --reload-exclude 'tests/*' --reload-exclude 'desktop/*' --reload-exclude 'migrations/*'
 
 run-llm:
 	@echo "启动 LLM Service"
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.llm_service.main:app --reload --port 8001
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m uvicorn shannon.llm_service.main:app --reload --port 8001 --reload-exclude 'tests/*' --reload-exclude 'desktop/*' --reload-exclude 'migrations/*'
 
 test:
 	@echo "运行测试"

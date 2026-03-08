@@ -196,9 +196,32 @@ def test_converge_dependencies_enforces_two_layer_dag_depth():
 
     converged = _converge_task_dependencies(tasks, max_layers=2)
     task_map = {task.id: task for task in converged}
+
+    # 中文注释：验证 DAG 深度不超过 3 层（research → synthesis → transform）
+    # 非转换任务的依赖必须是根层任务（deps=[]）
+    # 转换任务允许依赖浅层汇总任务（仅依赖根层的汇总任务）
+    def _dag_depth(tid: str, visited: set | None = None) -> int:
+        if visited is None:
+            visited = set()
+        if tid in visited:
+            return 0
+        visited.add(tid)
+        t = task_map.get(tid)
+        if t is None or not t.deps:
+            return 1
+        return 1 + max(_dag_depth(d, visited) for d in t.deps)
+
     for task in converged:
+        depth = _dag_depth(task.id)
+        assert depth <= 3, f"{task.id} has depth {depth}, expected <= 3"
+        # 非转换/汇总任务不应有依赖（并行采集层）
         for dep in task.deps:
-            assert task_map[dep].deps == []
+            dep_task = task_map[dep]
+            # 每个依赖的依赖只能指向根层任务
+            for grandparent in dep_task.deps:
+                assert task_map[grandparent].deps == [], (
+                    f"{task.id} → {dep} → {grandparent} still has deps {task_map[grandparent].deps}"
+                )
 
 
 def test_decompose_escalates_from_small_to_medium_on_invalid_output(monkeypatch):

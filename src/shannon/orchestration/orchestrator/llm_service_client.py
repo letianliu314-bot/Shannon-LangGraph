@@ -153,6 +153,8 @@ class LLMServiceClient:
         previous_results: Dict[str, Any] | None = None,
         timeout: float | None = None,
         max_retries: int | None = None,
+        strict_output: bool = False,
+        quality_mode: str = "best_effort",
     ) -> Dict[str, Any]:
         return self._post_json(
             "/agent/run",
@@ -162,6 +164,8 @@ class LLMServiceClient:
                 "refined": refined,
                 "task": task,
                 "previous_results": previous_results or {},
+                "strict_output": strict_output,
+                "quality_mode": quality_mode,
             },
             timeout=timeout,
             max_retries=max_retries,
