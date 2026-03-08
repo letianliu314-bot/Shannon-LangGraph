@@ -57,6 +57,8 @@ desktop/node_modules/
 desktop/.next/
 desktop/out/
 desktop/.env.local
+desktop/tsconfig.tsbuildinfo
+desktop/test-results/
 desktop/npm-debug.log*
 desktop/yarn-debug.log*
 desktop/yarn-error.log*
