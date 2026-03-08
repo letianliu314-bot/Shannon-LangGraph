@@ -16,7 +16,11 @@
     - [4. WatchFiles 误触发 reload 修复](#4-watchfiles-误触发-reload-修复)
     - [5. Docker 构建文件补全](#5-docker-构建文件补全)
     - [6. healthz 端点增加 PG 诊断](#6-healthz-端点增加-pg-诊断)
-  - [2026-03-05：无后端代码变更](#2026-03-05无后端代码变更)
+  - [2026-03-05：POST /runs 异步化重构 \& 前端适配](#2026-03-05post-runs-异步化重构--前端适配)
+    - [1. 后端 POST /runs 异步后台线程执行](#1-后端-post-runs-异步后台线程执行)
+    - [2. 新增 GET /threads/{id}/run\_status 端点](#2-新增-get-threadsidrun_status-端点)
+    - [3. 409 重复提交防护](#3-409-重复提交防护)
+    - [4. 前端适配（代理超时 + Hook 简化 + 测试更新）](#4-前端适配代理超时--hook-简化--测试更新)
   - [2026-03-08：Resilient Fallback 误触发修复 \& 质量控制策略](#2026-03-08resilient-fallback-误触发修复--质量控制策略)
   - [附录：后端修改文件速查](#附录后端修改文件速查)
   - [附录：环境变量速查](#附录环境变量速查)
@@ -207,13 +211,89 @@ def healthz():
 
 ---
 
-## 2026-03-05：无后端代码变更
+## 2026-03-05：POST /runs 异步化重构 & 前端适配
 
-本日工作集中在**前端 Graph 模块三层架构重构**，后端代码无任何改动。
+本日修复了 `POST /runs` 同步阻塞 uvicorn 单 worker 导致全站 502 的严重问题，并完成前端适配。同日还进行了前端 Graph 模块三层架构重构（详见 [troubleshooting.md → Issue #8](troubleshooting.md#issue-8前端-graph-模块三层架构重构2026-03-05)）。
 
-前端修改详情见 [troubleshooting.md → Issue #8](troubleshooting.md#issue-8前端-graph-模块三层架构重构2026-03-05)。
+**背景**: 用户使用 `deep` 策略生成训练数据时，`graph.invoke()` 同步执行耗时 16+ 小时，阻塞了 uvicorn 唯一的事件循环线程，导致 `healthz`、`/threads/{id}/state`、SSE 流等所有请求排队超时返回 502。
 
-**关联影响**: 前端中 `GraphLegend` 组件改为通过 `phases: PhaseStatusMap` prop 接收工作流阶段数据，该数据仍来自后端 SSE 推送的 `NODE_STARTED` / `NODE_COMPLETED` / `NODE_FAILED` 事件。后端推送逻辑未变。
+### 1. 后端 POST /runs 异步后台线程执行
+
+**问题**: `POST /runs` 直接调用同步 `graph.invoke(state_in, config)`，在单 worker + `--reload` 开发模式下阻塞整个服务。
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/orchestration/orchestrator/app.py` | `POST /runs` 从同步阻塞改为 **202 Accepted + `threading.Thread(daemon=True)` 后台执行**；新增 `_run_registry` 运行注册表 + `_run_registry_lock`；版本升至 `0.3.0` |
+
+**关键改动**:
+```python
+_run_registry: Dict[str, Dict[str, Any]] = {}
+_run_registry_lock = threading.Lock()
+
+@app.post("/runs", status_code=202)
+def start_run(req: RunRequest):
+    # 立即返回 202，后台执行 graph.invoke()
+    thread = threading.Thread(target=_background_run, name=f"run-{thread_id}", daemon=True)
+    thread.start()
+    return {"thread_id": thread_id, "status": "accepted"}
+```
+
+`_background_run()` 内部负责：
+- 调用 `graph.invoke(state_in, config)` 执行完整工作流
+- 完成后推送 `WORKFLOW_COMPLETED` SSE 事件
+- 更新 `_run_registry` 状态为 `completed`/`failed`
+- 异常时推送 `WORKFLOW_FAILED` 事件并记录错误
+
+### 2. 新增 GET /threads/{id}/run_status 端点
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/orchestration/orchestrator/app.py` | 新增 `GET /threads/{thread_id}/run_status` 端点 |
+
+**响应格式**:
+```json
+{"thread_id": "xxx", "run_status": "running|completed|failed|unknown", "error": null}
+```
+
+### 3. 409 重复提交防护
+
+**修改文件**:
+
+| 文件 | 改动 |
+|---|---|
+| `src/shannon/orchestration/orchestrator/app.py` | `POST /runs` 发送前检查 `_run_registry`，同一 thread 有 running 状态时返回 `409 Conflict` |
+
+```python
+with _run_registry_lock:
+    existing = _run_registry.get(thread_id)
+    if existing and existing["status"] == "running":
+        raise HTTPException(409, f"thread {thread_id} 已有运行中的工作流")
+```
+
+### 4. 前端适配（代理超时 + Hook 简化 + 测试更新）
+
+| 文件 | 改动 |
+|---|---|
+| `desktop/lib/backend.ts` | 新增 `PROXY_TIMEOUT_MS = 10_000` + `AbortController`，防止 Next.js 代理挂起 |
+| `desktop/hooks/useRunController.ts` | `RunResult` 从 `{response, timedOut}` 简化为 `{accepted: boolean}`；新增 409 中文错误提示 |
+| `desktop/app/page.tsx` | `onSend` 回调适配 `accepted` 模式 |
+| `desktop/lib/api/client.ts` | `RUN_TIMEOUT_MS` 从 120s 降至 15s（POST /runs 现在立即返回） |
+| `desktop/tests/component/chat-flow.test.tsx` | `/api/runs` mock 从 200 改为 202 |
+| `desktop/tests/e2e/chat-workflow.spec.ts` | 两个测试用例 mock 从 200 改为 202 |
+
+**验证结果**:
+
+| 测试项 | 结果 |
+|---|---|
+| `POST /runs` 返回 202 | ✅ 14ms 内返回 |
+| 后台线程完整执行 | ✅ refine→decompose→run→responses |
+| `healthz` 不阻塞 | ✅ deep 策略运行期间 5ms 响应 |
+| 409 重复提交 | ✅ 同一 thread 二次提交被拒 |
+| TypeScript 类型检查 | ✅ 全部修改文件零错误 |
 
 ---
 
@@ -360,6 +440,13 @@ curl -X POST http://127.0.0.1:8000/runs -d '{
 | 03-04 | `src/shannon/llm_service/main.py` | 新增 `_run_request_timeout()` + `_responses_request_timeout()` |
 | 03-04 | `Makefile` | `--reload-exclude` 排除非源码目录 |
 | 03-04 | `.env` | `OPENAI_TIMEOUT_SECONDS=120` |
+| 03-05 | `src/shannon/orchestration/orchestrator/app.py` | POST /runs 异步化：202 + threading.Thread + _run_registry + run_status 端点 + 409 防护 |
+| 03-05 | `desktop/lib/backend.ts` | 新增 PROXY_TIMEOUT_MS + AbortController |
+| 03-05 | `desktop/hooks/useRunController.ts` | RunResult 简化为 {accepted} |
+| 03-05 | `desktop/app/page.tsx` | onSend 适配 accepted 模式 |
+| 03-05 | `desktop/lib/api/client.ts` | RUN_TIMEOUT_MS 120s→15s |
+| 03-05 | `desktop/tests/component/chat-flow.test.tsx` | mock 200→202 |
+| 03-05 | `desktop/tests/e2e/chat-workflow.spec.ts` | mock 200→202 |
 | 03-08 | `src/shannon/llm_service/main.py` | 收窄 transform 匹配 + strict_output/quality_mode + 依赖收敛修复 |
 | 03-08 | `src/shannon/orchestration/orchestrator/state.py` | ResearchState 新增 strict_output / quality_mode 字段 |
 | 03-08 | `src/shannon/orchestration/orchestrator/app.py` | POST /runs 透传 strict_output / quality_mode |
