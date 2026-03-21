@@ -46,6 +46,12 @@
 - 理由：保证最细粒度可追溯，并提供阶段性稳定回放点。
 - 备选方案：按 stage 聚合提交。放弃原因：丢失 task 级证据链。
 
+### Decision 3.1: 轻量 Git 选型
+- 主实现采用 Git CLI（最小依赖、运维成熟、与现有仓库工具链兼容）。
+- 适配层预留 Dulwich 作为可选后端（仅在需要 Python 内嵌纯库化时启用）。
+- 理由：在 append-only 强约束下，Git CLI 可最快形成可审计主链路，且便于在 CI 与本地一致执行。
+- 备选方案：直接以 Dulwich 作为主后端。放弃原因：生态与调试经验不如 Git CLI 成熟，首期风险更高。
+
 ### Decision 4: Prompt Expert 逻辑独立，物理先内嵌
 - 定义独立 Prompt Expert 接口契约与服务边界。
 - 首期在 llm_service 内部挂载该能力，后续可无缝拆分部署。
@@ -82,10 +88,19 @@
 
 1. Phase 1：建立 Memory Layer 数据契约、run 目录规范、共享读取 API（不改变 DAG 流程）。
 2. Phase 2：在 Orchestration Layer 引入共享记忆读取路径与门禁状态机。
-3. Phase 3：落地 Version Layer（task commit、stage tag、append-only 守卫）。
+3. Phase 3：落地 Version Layer（task commit、stage tag、append-only 守卫），并启用 Git CLI 主链路。
 4. Phase 4：接入 Prompt Expert（先 llm_service 挂载），替换静态 role/task prompt 生成链路。
 5. Phase 5：落地质量优先 + 时间衰减策略并完成端到端验收。
 6. 每阶段执行验收脚本；未通过则冻结下一阶段入口。
+
+Artifact 顺序（运行时产物顺序，append-only）：
+1. 生成 run 清单：`reports/<run_id>/run_manifest.json`（记录阶段、策略、约束）。
+2. 生成 task 草稿产物：`reports/<run_id>/<agent>/<task_id>/draft.md`。
+3. 生成 task 正式产物与元数据：`final.md` + `meta.json`（含 quality_score 与 decay_score）。
+4. 执行 task 级 commit（必须）：提交该 task 新增文件与审计 trailer。
+5. 汇总 stage 验收产物：`reports/<run_id>/stages/phase-N/acceptance.md`。
+6. 验收通过后打 stage 级 tag（辅助）：`stage/<run_id>/phase-N`。
+7. 进入下一阶段，重复 2-6；禁止 rebase/merge，仅允许新增 commit 追加。
 
 回滚策略：
 - 阶段内失败只允许通过新增 commit 进行修复。
