@@ -1,0 +1,12 @@
+{
+  "run_id": "run-a",
+  "created_at": 1774066822.6629918,
+  "layout_version": "v1",
+  "policy": {
+    "single_branch": true,
+    "append_only": true,
+    "forbid_rebase": true,
+    "forbid_merge": true
+  },
+  "stage": "phase-1"
+}

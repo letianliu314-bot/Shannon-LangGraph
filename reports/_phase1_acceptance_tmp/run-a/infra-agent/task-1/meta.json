@@ -1,0 +1,15 @@
+{
+  "run_id": "run-a",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "infra",
+  "agent": "infra-agent",
+  "artifact_path": "run-a/infra-agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774066822.663764,
+  "content": "infra gpu supply chain analysis",
+  "metadata": {
+    "quality_score": 0.92,
+    "decay_score": 0.81
+  }
+}

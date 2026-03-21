@@ -9,7 +9,9 @@ from langgraph.graph import END, START, StateGraph
 
 from shannon.orchestration.orchestrator.llm_service_client import LLMServiceClient
 from shannon.orchestration.orchestrator.state import ResearchState, ResearchTask
+from shannon.storage.memory_layer import shared_memory_store
 from shannon.storage.redis.streaming_manager import Event
+from shannon.storage.version_layer import git_version_store
 
 # 中文注释：LangGraph 编排图实现（refine -> decompose -> schedule -> execute -> verify -> finalize）
 
@@ -24,6 +26,10 @@ def set_streaming_manager(manager: Any) -> None:
 
 def _resolve_thread_id(state: ResearchState) -> str:
     return str(state.get("thread_id") or "")
+
+
+def _resolve_phase(state: ResearchState) -> str:
+    return str(state.get("phase") or "phase-1")
 
 
 def _emit_event(
@@ -41,6 +47,9 @@ def _emit_event(
         return
 
     body = dict(payload or {})
+    body.setdefault("run_id", thread_id)
+    body.setdefault("phase", _resolve_phase(state))
+    body.setdefault("gate_status", str(state.get("gate_status") or "unknown"))
     if node:
         body.setdefault("node", node)
 
@@ -1006,11 +1015,53 @@ def schedule_node(state: ResearchState) -> Dict[str, Any]:
 
 
 def _build_previous_results_for_task(
+    state: ResearchState,
     task: Dict[str, Any],
     task_results: Dict[str, Dict[str, Any]],
 ) -> Dict[str, Any]:
-    # 中文注释：仅向下游传递依赖任务结果，避免无关上下文干扰
+    # 中文注释：共享记忆优先，依赖透传兜底
     deps = [str(dep) for dep in (task.get("deps") or []) if str(dep).strip()]
+    run_id = _resolve_thread_id(state)
+
+    shared_payload: Dict[str, Any] = {}
+    if run_id and deps:
+        for dep in deps:
+            records = shared_memory_store.search_records(run_id=run_id, task_id=dep, limit=1)
+            if not records:
+                continue
+            latest = records[0]
+            shared_payload[dep] = {
+                "status": "ok",
+                "content": latest.get("content", ""),
+                "citations": [],
+                "retrieval_trace": {
+                    "policy": "shared_memory",
+                    "artifact_path": latest.get("artifact_path"),
+                    "stage": latest.get("stage"),
+                    "source": "memory_layer",
+                },
+                "quality_status": "ok",
+            }
+
+    if shared_payload:
+        _emit_event(
+            state,
+            "SHARED_MEMORY_HIT",
+            "previous_results loaded from shared memory",
+            payload={"task_id": str(task.get("id") or ""), "hit_count": len(shared_payload)},
+            node="execute",
+        )
+        return shared_payload
+
+    if deps:
+        _emit_event(
+            state,
+            "SHARED_MEMORY_DEGRADED",
+            "shared memory miss, fallback to dependency handoff",
+            payload={"task_id": str(task.get("id") or ""), "dependency_count": len(deps)},
+            node="execute",
+        )
+
     payload: Dict[str, Any] = {}
     for dep in deps:
         dep_result = task_results.get(dep)
@@ -1199,7 +1250,7 @@ def execute_node(state: ResearchState) -> Dict[str, Any]:
                     strategy,
                     refined,
                     task,
-                    _build_previous_results_for_task(task, task_results),
+                    _build_previous_results_for_task(state, task, task_results),
                     strict_output,
                     quality_mode,
                 ): str(task.get("id"))
@@ -1237,6 +1288,53 @@ def execute_node(state: ResearchState) -> Dict[str, Any]:
                         },
                         node="execute",
                     )
+                    try:
+                        mem_record = shared_memory_store.upsert_task_record(
+                            run_id=_resolve_thread_id(state),
+                            task_id=task_id,
+                            content=str(result.get("content") or ""),
+                            stage=_resolve_phase(state),
+                            capability=str(task_map.get(task_id, {}).get("parent_area") or "general"),
+                            agent=str(role),
+                            artifact_name="final.md",
+                            metadata={
+                                "model": result.get("model"),
+                                "model_tier": result.get("model_tier"),
+                            },
+                        )
+                        quality_raw = result.get("quality_status")
+                        quality_score = 1.0 if str(quality_raw or "").lower() == "ok" else 0.7
+                        decay_score = 1.0
+                        commit_result = git_version_store.commit_task(
+                            run_id=_resolve_thread_id(state),
+                            task_id=task_id,
+                            stage=_resolve_phase(state),
+                            files=[
+                                str(mem_record.get("artifact_abs_path") or ""),
+                                str(mem_record.get("meta_abs_path") or ""),
+                                str(mem_record.get("index_abs_path") or ""),
+                            ],
+                            quality_score=quality_score,
+                            decay_score=decay_score,
+                            message=f"{str(role)}: append report for {task_id}",
+                        )
+                        git_version_store.append_log(
+                            run_id=_resolve_thread_id(state),
+                            payload={
+                                "type": "task_commit",
+                                "task_id": task_id,
+                                "stage": _resolve_phase(state),
+                                "result": commit_result,
+                            },
+                        )
+                    except Exception:
+                        _emit_event(
+                            state,
+                            "SHARED_MEMORY_DEGRADED",
+                            "failed to persist task result to shared memory or version layer",
+                            payload={"task_id": task_id},
+                            node="execute",
+                        )
                 else:
                     role = str(result.get("role_preset") or task_map.get(task_id, {}).get("role_preset") or "deep_research_agent")
                     _emit_agent_call(

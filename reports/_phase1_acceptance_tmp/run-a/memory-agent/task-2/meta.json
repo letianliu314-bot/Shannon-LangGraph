@@ -1,0 +1,15 @@
+{
+  "run_id": "run-a",
+  "task_id": "task-2",
+  "stage": "phase-1",
+  "capability": "memory",
+  "agent": "memory-agent",
+  "artifact_path": "run-a/memory-agent/task-2/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774066822.664417,
+  "content": "memory layer overview",
+  "metadata": {
+    "quality_score": 0.88,
+    "decay_score": 0.8
+  }
+}

@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from shannon.llm_service.client.openai_client import OpenAIClient
 from shannon.llm_service.presets import get_preset
+from shannon.llm_service.prompt_expert import build_prompt_contract
 from shannon.llm_service.prompts import (
     INTERPRETATION_PROMPT_GENERAL,
     INTERPRETATION_PROMPT_SOURCES,
@@ -203,6 +204,24 @@ class MemorySearchRequest(ShannonBaseModel):
     limit: int = 5
     collection: str = "task_memories"
     filter_payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+# 中文注释：类 PromptExpertRequest 的入口
+class PromptExpertRequest(ShannonBaseModel):
+    role_preset: str = "deep_research_agent"
+    task: Dict[str, Any] = Field(default_factory=dict)
+    user_request: str = ""
+    refined: Dict[str, Any] = Field(default_factory=dict)
+
+
+# 中文注释：类 PromptExpertResponse 的入口
+class PromptExpertResponse(ShannonBaseModel):
+    contract_version: str
+    role_preset: str
+    role_prompt: str
+    task_prompt: str
+    constraints: List[str] = Field(default_factory=list)
+    source: str = "prompt_expert"
 
 
 _META_INSTRUCTION_MARKERS = [
@@ -1436,6 +1455,42 @@ def _default_tasks(areas: List[str], role_preset: str, max_tasks: int) -> List[T
     return tasks[:max_tasks]
 
 
+def _resolve_prompt_contract(
+    task: TaskContract,
+    user_request: str,
+    refined: Dict[str, Any],
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    # 中文注释：优先使用 Prompt Expert，失败时回退 preset
+    fallback_preset = get_preset(task.role_preset)
+    fallback_contract = {
+        "contract_version": "v1-fallback",
+        "role_preset": task.role_preset,
+        "role_prompt": str(fallback_preset.get("system_prompt") or ""),
+        "task_prompt": f"Fallback task prompt: {task.title} | {task.goal}",
+        "constraints": ["fallback_mode"],
+        "source": "preset_fallback",
+    }
+    meta = {"status": "ok", "source": "prompt_expert", "contract_version": "v1"}
+
+    try:
+        contract = build_prompt_contract(
+            role_preset=task.role_preset,
+            task=task.model_dump(),
+            user_request=user_request,
+            refined=refined,
+        )
+        meta["contract_version"] = str(contract.get("contract_version") or "v1")
+        return contract, meta
+    except Exception as exc:  # noqa: BLE001
+        meta = {
+            "status": "fallback",
+            "source": "preset_fallback",
+            "reason": f"{type(exc).__name__}: {str(exc)}",
+            "contract_version": "v1-fallback",
+        }
+        return fallback_contract, meta
+
+
 # 中文注释：函数 _needs_retrieval 的入口
 
 def _needs_retrieval(task: TaskContract, previous_results: Optional[Dict[str, Any]] = None) -> bool:
@@ -1718,12 +1773,13 @@ def decompose(req: DecomposeRequest) -> DecomposeResponse:
 def agent_run(req: AgentRunRequest) -> AgentRunResponse:
     task = req.task
     model = resolve_model(task.model_tier)
-    preset = get_preset(task.role_preset)
     previous_results = req.previous_results if isinstance(req.previous_results, dict) else {}
 
     # 中文注释：工具白名单优先取任务显式配置，否则取角色默认配置
+    preset = get_preset(task.role_preset)
     tools_allowed = list(task.tools_allowed) if task.tools_allowed else list(preset["tools_allowed"])
-    system_prompt = preset["system_prompt"]
+    prompt_contract, prompt_meta = _resolve_prompt_contract(task=task, user_request=req.user_request, refined=req.refined)
+    system_prompt = str(prompt_contract.get("role_prompt") or preset["system_prompt"])
     # 中文注释：研究角色追加原项目 research mode 约束
     if should_use_source_format(task.role_preset):
         system_prompt = system_prompt + RESEARCH_MODE_INSTRUCTION
@@ -1811,6 +1867,7 @@ def agent_run(req: AgentRunRequest) -> AgentRunResponse:
             },
             "selected_urls": [],
         }
+    retrieval_trace["prompt_expert"] = prompt_meta
 
     quality_status = "ok"
     if retrieval_required:
@@ -1893,6 +1950,9 @@ def agent_run(req: AgentRunRequest) -> AgentRunResponse:
     prompt = (
         f"User request: {req.user_request}\n"
         f"Refined context: {json.dumps(req.refined, ensure_ascii=False)}\n"
+        f"Prompt expert contract version: {prompt_contract.get('contract_version')}\n"
+        f"Prompt expert task prompt: {prompt_contract.get('task_prompt')}\n"
+        f"Prompt expert constraints: {json.dumps(prompt_contract.get('constraints', []), ensure_ascii=False)}\n"
         f"Task id: {task.id}\n"
         f"Task title: {task.title}\n"
         f"Task description: {task.description or task.goal}\n"
@@ -2049,6 +2109,18 @@ def memory_search(req: MemorySearchRequest):
         filter_payload=req.filter_payload or None,
     )
     return {"collection": req.collection, "hits": hits}
+
+
+# 中文注释：函数 prompt_expert_generate 的入口
+@app.post("/prompt-expert/generate", response_model=PromptExpertResponse)
+def prompt_expert_generate(req: PromptExpertRequest) -> PromptExpertResponse:
+    contract = build_prompt_contract(
+        role_preset=req.role_preset,
+        task=req.task,
+        user_request=req.user_request,
+        refined=req.refined,
+    )
+    return PromptExpertResponse(**contract)
 
 
 # 中文注释：函数 tool_execute 的入口（通用工具执行兼容）

@@ -19,15 +19,18 @@ from shannon.orchestration.orchestrator.graph import (
     restore_checkpoint,
     set_streaming_manager,
 )
+from shannon.orchestration.orchestrator.gatekeeper import phase_gatekeeper
 from shannon.orchestration.workflows import (
     WorkflowTemplateError,
     compile_workflow_template,
     list_workflow_templates,
     load_workflow_template,
 )
+from shannon.storage.memory_layer import shared_memory_store
 from shannon.storage.postgres.client import pg_client
 from shannon.storage.redis.session_manager import session_manager
 from shannon.storage.redis.streaming_manager import Event, streaming_manager
+from shannon.storage.version_layer import git_version_store
 from shannon.utils.logger import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -76,6 +79,7 @@ def _init_runtime() -> None:
     app.state.pg_client = pg_client
     app.state.session_manager = session_manager
     app.state.streaming_manager = streaming_manager
+    app.state.shared_memory_store = shared_memory_store
     set_streaming_manager(streaming_manager)
 
 
@@ -131,6 +135,13 @@ def workflow_template(template_name: str):
 @app.post("/runs", status_code=202)
 def run(req: Dict[str, Any]):
     thread_id = str(req.get("thread_id") or "demo-thread")
+    phase = str(req.get("phase") or "phase-1").lower().strip()
+
+    gate_check = phase_gatekeeper.can_enter(run_id=thread_id, phase=phase)
+    if not bool(gate_check.get("allowed")):
+        with _run_registry_lock:
+            _run_registry[thread_id] = {"status": "frozen", "error": str(gate_check.get("reason") or "gate blocked")}
+        raise HTTPException(status_code=409, detail=f"phase gate blocked: {gate_check.get('reason')}")
 
     # 中文注释：检查该 thread 是否已有正在执行的 run，防止重复提交
     with _run_registry_lock:
@@ -199,6 +210,8 @@ def run(req: Dict[str, Any]):
 
     state_in = {
         "thread_id": thread_id,
+        "phase": phase,
+        "gate_status": str(gate_check.get("gate_status") or "open"),
         "user_request": user_request,
         "strategy": req.get("strategy", "deep"),
         # 中文注释：并发上限、任务上限可由调用方覆盖
@@ -245,6 +258,21 @@ def run(req: Dict[str, Any]):
         metadata={"strategy": state_in["strategy"]},
     )
 
+    # 中文注释：初始化 run 目录清单，定义 reports/<run_id>/ 结构
+    try:
+        app.state.shared_memory_store.ensure_run_manifest(
+            run_id=thread_id,
+            manifest={
+                "phase": state_in.get("phase"),
+                "gate_status": state_in.get("gate_status"),
+                "strategy": state_in.get("strategy"),
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+            },
+        )
+    except Exception:
+        pass
+
     # 中文注释：发布工作流开始事件
     app.state.streaming_manager.publish(
         thread_id,
@@ -253,7 +281,12 @@ def run(req: Dict[str, Any]):
             type="WORKFLOW_STARTED",
             agent_id="orchestrator",
             message="workflow started",
-            payload={"strategy": state_in["strategy"]},
+            payload={
+                "strategy": state_in["strategy"],
+                "run_id": thread_id,
+                "phase": state_in.get("phase"),
+                "gate_status": state_in.get("gate_status"),
+            },
         ),
     )
 
@@ -286,7 +319,13 @@ def run(req: Dict[str, Any]):
                     type="WORKFLOW_COMPLETED",
                     agent_id="orchestrator",
                     message="workflow completed",
-                    payload={"done": bool(out.get("done")), "error_count": len(out.get("errors", []))},
+                    payload={
+                        "done": bool(out.get("done")),
+                        "error_count": len(out.get("errors", [])),
+                        "run_id": thread_id,
+                        "phase": state_in.get("phase"),
+                        "gate_status": state_in.get("gate_status"),
+                    },
                 ),
             )
             with _run_registry_lock:
@@ -302,7 +341,12 @@ def run(req: Dict[str, Any]):
                     type="WORKFLOW_FAILED",
                     agent_id="orchestrator",
                     message="workflow failed",
-                    payload=fail_payload,
+                    payload={
+                        **fail_payload,
+                        "run_id": thread_id,
+                        "phase": state_in.get("phase"),
+                        "gate_status": state_in.get("gate_status"),
+                    },
                 ),
             )
             with _run_registry_lock:
@@ -409,3 +453,97 @@ def current_state_db(thread_id: str):
         # 中文注释：工作流执行期间 PG 可能尚无数据，返回空而非 404，减少日志噪音
         return {"thread_id": thread_id, "state": None}
     return {"thread_id": thread_id, "state": state_row}
+
+
+# 中文注释：阶段门禁决策（passed/failed）
+@app.post("/threads/{thread_id}/phases/{phase}/gate")
+def phase_gate_decision(thread_id: str, phase: str, req: Dict[str, Any]):
+    status = str(req.get("status") or "").strip().lower()
+    reason = str(req.get("reason") or "").strip()
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason 不能为空")
+    try:
+        payload = phase_gatekeeper.record_decision(
+            run_id=thread_id,
+            phase=str(phase).lower().strip(),
+            status=status,
+            reason=reason,
+            metadata=req.get("metadata") if isinstance(req.get("metadata"), dict) else None,
+        )
+        if status == "passed":
+            tag_result = git_version_store.create_stage_tag(thread_id, str(phase).lower().strip())
+            git_version_store.append_log(
+                run_id=thread_id,
+                payload={
+                    "type": "stage_tag",
+                    "phase": str(phase).lower().strip(),
+                    "result": tag_result,
+                },
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"ok": True, "gate": payload}
+
+
+# 中文注释：查询阶段是否可进入
+@app.get("/threads/{thread_id}/phases/{phase}/gate")
+def phase_gate_check(thread_id: str, phase: str):
+    try:
+        payload = phase_gatekeeper.can_enter(run_id=thread_id, phase=str(phase).lower().strip())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"thread_id": thread_id, "phase": str(phase).lower().strip(), **payload}
+
+
+# 中文注释：append-only 守卫检查（禁止 rebase/merge）
+@app.post("/version/guard/check")
+def version_guard_check(req: Dict[str, Any]):
+    operation = str(req.get("operation") or "").strip().lower()
+    if not operation:
+        raise HTTPException(status_code=400, detail="operation 不能为空")
+    try:
+        git_version_store.reject_forbidden_operation(operation)
+    except ValueError as exc:
+        return {"allowed": False, "operation": operation, "reason": str(exc)}
+    return {"allowed": True, "operation": operation}
+
+
+# 中文注释：写入共享记忆（run 目录 + 索引）
+@app.post("/memory/shared/upsert")
+def shared_memory_upsert(req: Dict[str, Any]):
+    run_id = str(req.get("run_id") or "").strip()
+    task_id = str(req.get("task_id") or "").strip()
+    content = str(req.get("content") or "")
+    if not run_id:
+        raise HTTPException(status_code=400, detail="run_id 不能为空")
+    if not task_id:
+        raise HTTPException(status_code=400, detail="task_id 不能为空")
+    if not content:
+        raise HTTPException(status_code=400, detail="content 不能为空")
+
+    payload = app.state.shared_memory_store.upsert_task_record(
+        run_id=run_id,
+        task_id=task_id,
+        content=content,
+        stage=str(req.get("stage") or "phase-1"),
+        capability=str(req.get("capability") or "general"),
+        agent=str(req.get("agent") or "orchestrator"),
+        artifact_name=str(req.get("artifact_name") or "final.md"),
+        metadata=req.get("metadata") if isinstance(req.get("metadata"), dict) else None,
+    )
+    return {"ok": True, "record": payload}
+
+
+# 中文注释：检索共享记忆（按 run/task/stage/capability 过滤）
+@app.post("/memory/shared/search")
+def shared_memory_search(req: Dict[str, Any]):
+    records = app.state.shared_memory_store.search_records(
+        run_id=str(req.get("run_id") or "").strip() or None,
+        task_id=str(req.get("task_id") or "").strip() or None,
+        stage=str(req.get("stage") or "").strip() or None,
+        capability=str(req.get("capability") or "").strip() or None,
+        limit=int(req.get("limit") or 20),
+    )
+    return {"count": len(records), "records": records}
