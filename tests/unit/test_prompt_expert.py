@@ -17,7 +17,7 @@ def test_prompt_expert_contract_fields():
         user_request="u",
         refined={"k": "v"},
     )
-    assert contract["contract_version"] == "v1"
+    assert contract["contract_version"] == "v2"
     assert contract["role_prompt"]
     assert contract["task_prompt"]
 

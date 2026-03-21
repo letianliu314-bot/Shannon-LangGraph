@@ -1343,19 +1343,34 @@ def _build_rule_based_decompose_tasks(
         tasks.append(
             TaskContract(
                 id="task-merge",
-                title="Cross-check findings",
-                goal="Cross-check conflicts and unify conclusions across all findings",
-                description="Resolve conflicts across fetched evidence and produce final synthesis",
+                title="Evidence integration gate",
+                goal="Integrate child outputs into canonical facts, conflict adjudication, and traceable claim-evidence mapping",
+                description="Aggregate all upstream findings, deduplicate claims, resolve conflicts by source authority and recency, and produce an integration brief for downstream synthesis.",
                 deps=research_ids,
-                deliverable="conflict_resolution_note",
-                acceptance_criteria=["lists conflicts", "provides reconciled conclusion"],
+                deliverable="integration_brief",
+                acceptance_criteria=[
+                    "provides canonical_facts",
+                    "provides claim_evidence_map for major claims",
+                    "lists conflicts and resolution rationale",
+                    "labels uncertainties and evidence gaps",
+                ],
                 model_tier=ModelTier.SMALL.value,
                 role_preset=role_preset,
                 tools_allowed=["mcp_fetch"],
                 estimated_tokens=600,
                 suggested_tools=[],
                 tool_parameters={},
-                output_format={"type": "narrative", "required_fields": [], "optional_fields": []},
+                output_format={
+                    "type": "structured",
+                    "required_fields": [
+                        "canonical_facts",
+                        "claim_evidence_map",
+                        "conflicts",
+                        "uncertainties",
+                        "gap_ledger",
+                    ],
+                    "optional_fields": ["cross_task_insights"],
+                },
                 source_guidance={"required": ["official", "aggregator"], "optional": ["news"], "avoid": ["social"]},
                 search_budget={"max_queries": 0, "max_fetches": 0},
                 boundaries={"in_scope": ["cross-check"], "out_of_scope": []},
@@ -1433,19 +1448,34 @@ def _default_tasks(areas: List[str], role_preset: str, max_tasks: int) -> List[T
         tasks.append(
             TaskContract(
                 id="task-merge",
-                title="Cross-check findings",
-                goal="Cross-check conflicts and unify conclusions across all findings",
-                description="Resolve conflicts across fetched evidence and produce final synthesis",
+                title="Evidence integration gate",
+                goal="Integrate child outputs into canonical facts, conflict adjudication, and traceable claim-evidence mapping",
+                description="Aggregate all upstream findings, deduplicate claims, resolve conflicts by source authority and recency, and produce an integration brief for downstream synthesis.",
                 deps=[task.id for task in tasks],
-                deliverable="conflict_resolution_note",
-                acceptance_criteria=["lists conflicts", "provides reconciled conclusion"],
+                deliverable="integration_brief",
+                acceptance_criteria=[
+                    "provides canonical_facts",
+                    "provides claim_evidence_map for major claims",
+                    "lists conflicts and resolution rationale",
+                    "labels uncertainties and evidence gaps",
+                ],
                 model_tier=ModelTier.SMALL.value,
                 role_preset=role_preset,
                 tools_allowed=list(preset["tools_allowed"]),
                 estimated_tokens=600,
                 suggested_tools=[],
                 tool_parameters={},
-                output_format={"type": "narrative", "required_fields": [], "optional_fields": []},
+                output_format={
+                    "type": "structured",
+                    "required_fields": [
+                        "canonical_facts",
+                        "claim_evidence_map",
+                        "conflicts",
+                        "uncertainties",
+                        "gap_ledger",
+                    ],
+                    "optional_fields": ["cross_task_insights"],
+                },
                 source_guidance={"required": ["official", "aggregator"], "optional": ["news"], "avoid": ["social"]},
                 search_budget={"max_queries": 0, "max_fetches": 0},
                 boundaries={"in_scope": ["cross-check"], "out_of_scope": []},
@@ -1617,6 +1647,10 @@ def _build_task_contract_instructions(task: TaskContract) -> str:
             instructions.append(f"FOCUS ON: {', '.join([str(v) for v in in_scope])}")
         if isinstance(out_of_scope, list) and out_of_scope:
             instructions.append(f"DO NOT cover: {', '.join([str(v) for v in out_of_scope])}")
+
+    instructions.append("## Contract Validation Checklist")
+    instructions.append("Before answering, verify: objective, boundaries, source guidance, output fields, and acceptance criteria are all satisfied")
+    instructions.append("For high-impact claims, include claim-evidence traceability; if unresolved, mark as uncertainty")
 
     if not instructions:
         return ""

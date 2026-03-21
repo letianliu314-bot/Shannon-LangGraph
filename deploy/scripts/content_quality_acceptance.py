@@ -16,6 +16,20 @@ from shannon.quality import (
 )
 
 
+def _extract_correctness_metrics(report: Dict[str, Any]) -> Dict[str, float]:
+    dimensions = report.get("dimensions") if isinstance(report.get("dimensions"), dict) else {}
+    correctness = dimensions.get("correctness") if isinstance(dimensions.get("correctness"), dict) else {}
+    diagnostics = correctness.get("diagnostics") if isinstance(correctness.get("diagnostics"), list) else []
+    for item in diagnostics:
+        if isinstance(item, dict) and isinstance(item.get("summary"), dict):
+            summary = item["summary"]
+            return {
+                "unsupported_ratio": float(summary.get("unsupported_ratio", 0.0)),
+                "pseudo_false_negative_ratio": float(summary.get("pseudo_false_negative_ratio", 0.0)),
+            }
+    return {"unsupported_ratio": 0.0, "pseudo_false_negative_ratio": 0.0}
+
+
 def _load_samples(path: Path) -> Dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -41,12 +55,15 @@ def _evaluate_samples(samples: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any
         report = generate_quality_report(payload, result)
         report["sample_id"] = sample_id
         reports.append(report)
+        correctness_metrics = _extract_correctness_metrics(report)
         score_map[sample_id] = {
             "correctness": result.dimensions["correctness"].score,
             "completeness": result.dimensions["completeness"].score,
             "structure": result.dimensions["structure"].score,
             "usability": result.dimensions["usability"].score,
             "total": result.total_score,
+            "unsupported_ratio": correctness_metrics["unsupported_ratio"],
+            "pseudo_false_negative_ratio": correctness_metrics["pseudo_false_negative_ratio"],
         }
 
     return reports, score_map
@@ -77,11 +94,18 @@ def main() -> None:
     }
 
     if args.mode == "refresh-baseline":
+        metric_unsupported = [float(item.get("unsupported_ratio", 0.0)) for item in score_map.values()]
+        metric_pfn = [float(item.get("pseudo_false_negative_ratio", 0.0)) for item in score_map.values()]
+        aggregate_metrics = {
+            "unsupported_ratio": (sum(metric_unsupported) / len(metric_unsupported)) if metric_unsupported else 0.0,
+            "pseudo_false_negative_ratio": (sum(metric_pfn) / len(metric_pfn)) if metric_pfn else 0.0,
+        }
         baseline = save_baseline_scores(
             sample_scores=score_map,
             dataset_version=dataset_version,
             output_path=baseline_path,
             change_note="baseline refreshed by acceptance script",
+            correctness_metrics=aggregate_metrics,
         )
         report_payload["baseline"] = baseline
     elif args.mode == "regression":

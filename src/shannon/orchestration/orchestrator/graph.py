@@ -510,19 +510,34 @@ def _build_fallback_decompose_tasks(state: ResearchState) -> List[Dict[str, Any]
         tasks.append(
             {
                 "id": "task-merge",
-                "title": "Cross-check findings",
-                "goal": "Cross-check conflicts and unify conclusions across all findings",
-                "description": "Resolve conflicts across fetched evidence and produce final synthesis",
+                "title": "Evidence integration gate",
+                "goal": "Integrate child outputs into canonical facts, conflict adjudication, and traceable claim-evidence mapping",
+                "description": "Aggregate all upstream findings, deduplicate claims, resolve conflicts by source authority and recency, and produce an integration brief for downstream synthesis.",
                 "deps": [str(task.get("id")) for task in tasks],
-                "deliverable": "conflict_resolution_note",
-                "acceptance_criteria": ["lists conflicts", "provides reconciled conclusion"],
+                "deliverable": "integration_brief",
+                "acceptance_criteria": [
+                    "provides canonical_facts",
+                    "provides claim_evidence_map for major claims",
+                    "lists conflicts and resolution rationale",
+                    "labels uncertainties and evidence gaps",
+                ],
                 "model_tier": "small",
                 "role_preset": "deep_research_agent",
                 "tools_allowed": ["mcp_fetch"],
                 "estimated_tokens": 600,
                 "suggested_tools": [],
                 "tool_parameters": {},
-                "output_format": {"type": "narrative", "required_fields": [], "optional_fields": []},
+                "output_format": {
+                    "type": "structured",
+                    "required_fields": [
+                        "canonical_facts",
+                        "claim_evidence_map",
+                        "conflicts",
+                        "uncertainties",
+                        "gap_ledger",
+                    ],
+                    "optional_fields": ["cross_task_insights"],
+                },
                 "source_guidance": {"required": ["official", "aggregator"], "optional": ["news"], "avoid": ["social"]},
                 "search_budget": {"max_queries": 0, "max_fetches": 0},
                 "boundaries": {"in_scope": ["cross-check"], "out_of_scope": []},
@@ -1544,26 +1559,33 @@ def finalize_node(state: ResearchState) -> Dict[str, Any]:
     llm_service_base_url = state.get("llm_service_base_url", "http://127.0.0.1:8001")
 
     completed_payload: List[Dict[str, Any]] = []
+    integration_payload: Dict[str, Any] | None = None
     for task_id, task in task_map.items():
         if task.get("status") != "succeeded":
             continue
         result = task_results.get(task_id)
         if not result:
             continue
-        completed_payload.append(
-            {
-                "task_id": task_id,
-                "title": task.get("title"),
-                "goal": task.get("goal"),
-                "content": result.get("content", ""),
-            }
-        )
+        item = {
+            "task_id": task_id,
+            "title": task.get("title"),
+            "goal": task.get("goal"),
+            "content": result.get("content", ""),
+        }
+        completed_payload.append(item)
+        if str(task_id).strip().lower() == "task-merge":
+            integration_payload = item
 
     summary_prompt = (
-        "You are a research synthesizer. Merge all task outputs into a final answer.\n"
+        "You are a research synthesizer. Build the final answer from the integration artifact first, then use other task outputs only as supplemental context.\n"
+        "Rules:\n"
+        "1) Every major claim must map to evidence.\n"
+        "2) Explicitly list uncertainty when evidence is weak or conflicting.\n"
+        "3) Provide decision-ready output: executive summary, key judgments, risks, and prioritized actions.\n"
         f"User request: {state.get('user_request', '')}\n"
         f"Refined context: {json.dumps(state.get('refined', {}), ensure_ascii=False)}\n"
-        f"Task results: {json.dumps(completed_payload, ensure_ascii=False)}"
+        f"Integration artifact: {json.dumps(integration_payload or {}, ensure_ascii=False)}\n"
+        f"All task results: {json.dumps(completed_payload, ensure_ascii=False)}"
     )
 
     summary_content = ""
@@ -1582,7 +1604,10 @@ def finalize_node(state: ResearchState) -> Dict[str, Any]:
         response = client.respond(
             prompt=summary_prompt,
             model_tier=str(state.get("final_tier", "large")),
-            system_prompt="You are a strict synthesis reviewer. Keep the answer factual and structured.",
+            system_prompt=(
+                "You are a strict synthesis reviewer. Keep output factual, integration-first, and evidence-traceable. "
+                "Do not present unsupported certainty; mark unresolved conflicts and uncertainty explicitly."
+            ),
         )
         summary_content = str(response.get("content", ""))
         _emit_agent_call(

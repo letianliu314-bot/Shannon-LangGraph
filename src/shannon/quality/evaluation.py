@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from .config import QualityScoringConfig
 
@@ -23,6 +23,7 @@ class DimensionEvaluation:
     findings: List[str] = field(default_factory=list)
     evidence: List[str] = field(default_factory=list)
     suggestions: List[str] = field(default_factory=list)
+    diagnostics: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,59 @@ def _tokens(text: str) -> set[str]:
     return {token.lower() for token in re.findall(r"[A-Za-z0-9_\u4e00-\u9fff]+", text)}
 
 
+_SYNONYM_MAP = {
+    "领先": "优势",
+    "强": "优势",
+    "更强": "优势",
+    "场景落地": "部署",
+    "落地": "部署",
+    "执行": "实施",
+}
+
+
+def _normalize_text(text: str) -> str:
+    normalized = str(text or "").lower()
+    normalized = re.sub(r"[\s\t\r\n]+", " ", normalized)
+    normalized = re.sub(r"[，。！？；：、,.!?;:\(\)\[\]{}\"'“”‘’]+", " ", normalized)
+    for source, target in _SYNONYM_MAP.items():
+        normalized = normalized.replace(source, target)
+    return normalized.strip()
+
+
+def _split_token_chunks(text: str) -> List[str]:
+    return re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]+", text.lower())
+
+
+def _expanded_tokens(text: str) -> set[str]:
+    tokens: set[str] = set()
+    for chunk in _split_token_chunks(text):
+        if not chunk:
+            continue
+        tokens.add(chunk)
+        if re.fullmatch(r"[\u4e00-\u9fff]+", chunk):
+            chars = list(chunk)
+            tokens.update(chars)
+            if len(chars) >= 2:
+                tokens.update("".join(chars[i : i + 2]) for i in range(len(chars) - 1))
+    return tokens
+
+
+def _char_bigrams(text: str) -> set[str]:
+    compact = re.sub(r"\s+", "", _normalize_text(text))
+    if len(compact) < 2:
+        return {compact} if compact else set()
+    return {compact[i : i + 2] for i in range(len(compact) - 1)}
+
+
+def _jaccard_similarity(a: set[str], b: set[str]) -> float:
+    if not a or not b:
+        return 0.0
+    union = a | b
+    if not union:
+        return 0.0
+    return len(a & b) / len(union)
+
+
 def _split_claims(content: str) -> List[str]:
     claims = [part.strip() for part in re.split(r"[。！？.!?\n]", content) if part.strip()]
     return claims
@@ -52,13 +106,16 @@ def evaluate_correctness(content: str, evidence_list: List[str]) -> DimensionEva
     if not claims:
         return DimensionEvaluation(score=1.0)
 
-    evidence_tokens = set()
-    for item in evidence_list:
-        evidence_tokens |= _tokens(item)
+    evidence_tokens = [_tokens(item) for item in evidence_list]
+    normalized_evidence_tokens = [_expanded_tokens(_normalize_text(item)) for item in evidence_list]
+    evidence_bigrams = [_char_bigrams(item) for item in evidence_list]
 
     unsupported: List[str] = []
     matched_evidence: List[str] = []
+    diagnostics: List[Dict[str, Any]] = []
     meaningful_claim_count = 0
+    unsupported_missing = 0
+    unsupported_mismatch = 0
     for claim in claims:
         claim_tokens = _tokens(claim)
         if not claim_tokens:
@@ -66,19 +123,108 @@ def evaluate_correctness(content: str, evidence_list: List[str]) -> DimensionEva
         if not any(not token.isdigit() for token in claim_tokens):
             continue
         meaningful_claim_count += 1
-        if evidence_tokens and claim_tokens & evidence_tokens:
+
+        matched_level = "none"
+        matched_item = ""
+        max_similarity = 0.0
+        max_norm_overlap = 0
+
+        # 1) lexical match
+        for idx, token_set in enumerate(evidence_tokens):
+            if claim_tokens & token_set:
+                matched_level = "lexical_match"
+                matched_item = evidence_list[idx]
+                break
+
+        # 2) normalized match
+        if matched_level == "none":
+            claim_norm_tokens = _expanded_tokens(_normalize_text(claim))
+            for idx, norm_set in enumerate(normalized_evidence_tokens):
+                overlap = len(claim_norm_tokens & norm_set)
+                if overlap > max_norm_overlap:
+                    max_norm_overlap = overlap
+                if overlap >= 3:
+                    matched_level = "normalized_match"
+                    matched_item = evidence_list[idx]
+                    break
+
+        # 3) semantic-like match (character bigram similarity)
+        if matched_level == "none":
+            claim_bigrams = _char_bigrams(claim)
+            best_idx = -1
+            for idx, candidate_bigrams in enumerate(evidence_bigrams):
+                similarity = _jaccard_similarity(claim_bigrams, candidate_bigrams)
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_idx = idx
+            if max_similarity >= 0.28 and best_idx >= 0:
+                matched_level = "semantic_match"
+                matched_item = evidence_list[best_idx]
+
+        if matched_level != "none":
             matched_evidence.append(claim)
+            diagnostics.append(
+                {
+                    "claim": claim,
+                    "label": "supported",
+                    "match_level": matched_level,
+                    "matched_evidence": matched_item,
+                }
+            )
+            continue
+
+        reason = "evidence_missing"
+        if evidence_list and (max_norm_overlap > 0 or max_similarity >= 0.05):
+            reason = "evidence_mismatch"
+
+        unsupported.append(claim)
+        if reason == "evidence_missing":
+            unsupported_missing += 1
         else:
-            unsupported.append(claim)
+            unsupported_mismatch += 1
+        diagnostics.append(
+            {
+                "claim": claim,
+                "label": "unsupported",
+                "match_level": "none",
+                "failure_reason": reason,
+            }
+        )
 
     if meaningful_claim_count == 0:
         return DimensionEvaluation(score=1.0)
 
     base = 1.0 - (len(unsupported) / meaningful_claim_count)
     score = _clamp(base)
-    findings = [f"unsupported_claim: {item}" for item in unsupported]
+    findings = []
+    for row in diagnostics:
+        if row.get("label") == "unsupported":
+            reason = str(row.get("failure_reason") or "evidence_missing")
+            findings.append(f"unsupported_claim[{reason}]: {row.get('claim')}")
+
+    unsupported_ratio = len(unsupported) / meaningful_claim_count
+    pseudo_false_negative_ratio = unsupported_mismatch / meaningful_claim_count
+    diagnostics.append(
+        {
+            "summary": {
+                "claim_count": meaningful_claim_count,
+                "unsupported_count": len(unsupported),
+                "evidence_missing_count": unsupported_missing,
+                "evidence_mismatch_count": unsupported_mismatch,
+                "unsupported_ratio": unsupported_ratio,
+                "pseudo_false_negative_ratio": pseudo_false_negative_ratio,
+            }
+        }
+    )
+
     suggestions = ["为无证据结论补充可核查依据，或移除该结论。"] if unsupported else []
-    return DimensionEvaluation(score=score, findings=findings, evidence=matched_evidence[:5], suggestions=suggestions)
+    return DimensionEvaluation(
+        score=score,
+        findings=findings,
+        evidence=matched_evidence[:5],
+        suggestions=suggestions,
+        diagnostics=diagnostics,
+    )
 
 
 def evaluate_completeness(content: str, key_points: List[str]) -> DimensionEvaluation:
@@ -208,6 +354,7 @@ def generate_quality_report(payload: QualityEvaluationInput, result: QualityEval
                 "findings": dim.findings,
                 "evidence": dim.evidence,
                 "suggestions": dim.suggestions,
+                "diagnostics": dim.diagnostics,
             }
             for name, dim in result.dimensions.items()
         },

@@ -1,0 +1,191 @@
+{
+  "dataset_version": "stress-v1",
+  "updated_at": 1774085295.644094,
+  "change_note": "baseline refreshed by acceptance script",
+  "samples": {
+    "stress-01": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-02": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-03": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-04": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-05": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-06": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-07": {
+      "correctness": 0.6666666666666667,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.7433333333333333,
+      "unsupported_ratio": 0.3333333333333333,
+      "pseudo_false_negative_ratio": 0.16666666666666666
+    },
+    "stress-08": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-09": {
+      "correctness": 0.8,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.79,
+      "unsupported_ratio": 0.2,
+      "pseudo_false_negative_ratio": 0.2
+    },
+    "stress-10": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-11": {
+      "correctness": 1.0,
+      "completeness": 0.75,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.7975,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-12": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-13": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-14": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-15": {
+      "correctness": 0.8,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.79,
+      "unsupported_ratio": 0.2,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-16": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-17": {
+      "correctness": 0.8,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.79,
+      "unsupported_ratio": 0.2,
+      "pseudo_false_negative_ratio": 0.2
+    },
+    "stress-18": {
+      "correctness": 0.8,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.79,
+      "unsupported_ratio": 0.2,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-19": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    },
+    "stress-20": {
+      "correctness": 1.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 0.5,
+      "total": 0.86,
+      "unsupported_ratio": 0.0,
+      "pseudo_false_negative_ratio": 0.0
+    }
+  },
+  "correctness_metrics": {
+    "unsupported_ratio": 0.056666666666666664,
+    "pseudo_false_negative_ratio": 0.028333333333333332
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "dataset_version": "correctness-calibration-v1",
+  "description": "Correctness calibration samples for synonym rewrite, cross-sentence grounding, and summary inference",
+  "samples": [
+    {
+      "sample_id": "calib-synonym-1",
+      "scenario": "同义改写",
+      "task_goal": "判断模型能力差异",
+      "target_user": "strategy-analyst",
+      "content": "美国在基础模型生态上更有优势，中国在产业部署效率上更强。",
+      "evidence": [
+        "美国拥有头部基础模型公司与云生态优势",
+        "中国在行业部署与工程化交付效率方面表现突出"
+      ],
+      "key_points": [
+        "基础模型",
+        "部署效率"
+      ]
+    },
+    {
+      "sample_id": "calib-cross-sentence-1",
+      "scenario": "跨句归因",
+      "task_goal": "比较监管取向",
+      "target_user": "policy-researcher",
+      "content": "美国更强调市场驱动。中国强调行业治理与规模化推进。两国都在加强监管。",
+      "evidence": [
+        "美国政策语境更强调市场创新机制",
+        "中国在行业治理与规模化实施方面推进更集中",
+        "两国均在推进AI监管框架"
+      ],
+      "key_points": [
+        "市场驱动",
+        "行业治理",
+        "监管"
+      ]
+    },
+    {
+      "sample_id": "calib-summary-1",
+      "scenario": "摘要归纳",
+      "task_goal": "给出短中期判断",
+      "target_user": "exec",
+      "content": "短期美国在前沿突破更强，中期中国在应用规模和成本优化更有潜力。",
+      "evidence": [
+        "美国在前沿模型创新和科研转化方面保持领先",
+        "中国在大规模应用部署与成本优化方面优势明显"
+      ],
+      "key_points": [
+        "短期",
+        "中期",
+        "前沿突破",
+        "规模应用"
+      ]
+    }
+  ]
+}

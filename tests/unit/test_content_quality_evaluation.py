@@ -27,6 +27,26 @@ def test_correctness_and_completeness_pass_case():
     assert result.verdict in {"passed", "warning"}
 
 
+def test_correctness_passes_on_synonym_or_near_semantic_match():
+    payload = QualityEvaluationInput(
+        content="美国在基础模型生态更强，中国在产业部署效率更领先。",
+        evidence=[
+            "美国拥有头部基础模型公司与云生态优势",
+            "中国在行业部署与工程化交付效率方面表现突出",
+        ],
+        key_points=["基础模型", "部署效率"],
+    )
+    config = load_quality_scoring_config()
+
+    result = evaluate_content_quality(payload, config)
+
+    assert result.dimensions["correctness"].score >= 0.5
+    assert any(
+        isinstance(item, dict) and item.get("label") == "supported"
+        for item in result.dimensions["correctness"].diagnostics
+    )
+
+
 def test_correctness_and_completeness_fail_case():
     payload = QualityEvaluationInput(
         content="系统已经满足全部要求。并且无需任何输入。",
@@ -40,6 +60,30 @@ def test_correctness_and_completeness_fail_case():
     assert result.dimensions["correctness"].score < 0.5
     assert result.dimensions["completeness"].score == 0.0
     assert result.verdict == "failed"
+
+
+def test_correctness_failure_reason_split_between_missing_and_mismatch():
+    payload = QualityEvaluationInput(
+        content="政务升级需要评估。量子芯片突破明显。",
+        evidence=["政策框架持续推进"],
+        key_points=[],
+    )
+    config = load_quality_scoring_config()
+
+    result = evaluate_content_quality(payload, config)
+    findings = result.dimensions["correctness"].findings
+
+    assert any("unsupported_claim[evidence_mismatch]" in item for item in findings)
+    assert any("unsupported_claim[evidence_missing]" in item for item in findings)
+    summary_rows = [
+        item["summary"]
+        for item in result.dimensions["correctness"].diagnostics
+        if isinstance(item, dict) and isinstance(item.get("summary"), dict)
+    ]
+    assert summary_rows
+    summary = summary_rows[0]
+    assert "unsupported_ratio" in summary
+    assert "pseudo_false_negative_ratio" in summary
 
 
 def test_structure_and_usability_negative_samples():

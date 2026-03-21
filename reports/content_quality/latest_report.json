@@ -11,12 +11,12 @@
         "evidence_count": 2,
         "key_point_count": 3
       },
-      "timestamp": 1774082127.7112262,
+      "timestamp": 1774084226.756284,
       "dimensions": {
         "correctness": {
           "score": 0.6666666666666667,
           "findings": [
-            "unsupported_claim: 输出修复建议"
+            "unsupported_claim[evidence_missing]: 输出修复建议"
           ],
           "evidence": [
             "检查 dataset 字段",
@@ -24,6 +24,36 @@
           ],
           "suggestions": [
             "为无证据结论补充可核查依据，或移除该结论。"
+          ],
+          "diagnostics": [
+            {
+              "claim": "检查 dataset 字段",
+              "label": "supported",
+              "match_level": "lexical_match",
+              "matched_evidence": "dataset 字段是必填字段"
+            },
+            {
+              "claim": "检查 field 完整性",
+              "label": "supported",
+              "match_level": "lexical_match",
+              "matched_evidence": "field 缺失会导致下游统计失败"
+            },
+            {
+              "claim": "输出修复建议",
+              "label": "unsupported",
+              "match_level": "none",
+              "failure_reason": "evidence_missing"
+            },
+            {
+              "summary": {
+                "claim_count": 3,
+                "unsupported_count": 1,
+                "evidence_missing_count": 1,
+                "evidence_mismatch_count": 0,
+                "unsupported_ratio": 0.3333333333333333,
+                "pseudo_false_negative_ratio": 0.0
+              }
+            }
           ]
         },
         "completeness": {
@@ -32,7 +62,8 @@
           "evidence": [
             "covered:3/3"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         },
         "structure": {
           "score": 0.8,
@@ -46,7 +77,8 @@
           ],
           "suggestions": [
             "按结论-依据-行动的顺序重组内容，并增加衔接语。"
-          ]
+          ],
+          "diagnostics": []
         },
         "usability": {
           "score": 1.0,
@@ -55,7 +87,8 @@
             "action_hits:2",
             "has_steps:True"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         }
       },
       "final": {
@@ -73,17 +106,41 @@
         "evidence_count": 1,
         "key_point_count": 2
       },
-      "timestamp": 1774082127.711261,
+      "timestamp": 1774084226.756358,
       "dimensions": {
         "correctness": {
           "score": 0.0,
           "findings": [
-            "unsupported_claim: 系统完全可靠",
-            "unsupported_claim: 无需任何检查"
+            "unsupported_claim[evidence_mismatch]: 系统完全可靠",
+            "unsupported_claim[evidence_missing]: 无需任何检查"
           ],
           "evidence": [],
           "suggestions": [
             "为无证据结论补充可核查依据，或移除该结论。"
+          ],
+          "diagnostics": [
+            {
+              "claim": "系统完全可靠",
+              "label": "unsupported",
+              "match_level": "none",
+              "failure_reason": "evidence_mismatch"
+            },
+            {
+              "claim": "无需任何检查",
+              "label": "unsupported",
+              "match_level": "none",
+              "failure_reason": "evidence_missing"
+            },
+            {
+              "summary": {
+                "claim_count": 2,
+                "unsupported_count": 2,
+                "evidence_missing_count": 1,
+                "evidence_mismatch_count": 1,
+                "unsupported_ratio": 1.0,
+                "pseudo_false_negative_ratio": 0.5
+              }
+            }
           ]
         },
         "completeness": {
@@ -97,7 +154,8 @@
           ],
           "suggestions": [
             "补充缺失关键点，并与任务目标逐条对齐。"
-          ]
+          ],
+          "diagnostics": []
         },
         "structure": {
           "score": 1.0,
@@ -105,7 +163,8 @@
           "evidence": [
             "系统完全可靠。无需任何检查。"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         },
         "usability": {
           "score": 0.5,
@@ -114,7 +173,8 @@
             "action_hits:1",
             "has_steps:False"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         }
       },
       "final": {
@@ -132,22 +192,72 @@
         "evidence_count": 3,
         "key_point_count": 6
       },
-      "timestamp": 1774082127.71133,
+      "timestamp": 1774084226.756601,
       "dimensions": {
         "correctness": {
-          "score": 0.0,
-          "findings": [
-            "unsupported_claim: 中美AI发展各有优势",
-            "unsupported_claim: 技术与模型：美国在基础模型和算力生态上领先，中国在工程化落地和场景迭代速度上更快",
-            "unsupported_claim: 产业应用：美国在企业软件、云平台与科研转化方面优势明显，中国在政务、制造、零售和移动互联网场景渗透更深",
-            "unsupported_claim: 数据与监管：美国更强调市场驱动与开源创新，中国在数据治理、行业合规与规模化部署上推进更集中",
-            "unsupported_claim: 人才与资本：美国顶尖研究人才和风险投资体系更成熟，中国在应用型人才储备和产业投资执行效率上具备优势",
-            "unsupported_claim: 结论：短期看美国在前沿突破上更强，中期看中国在大规模应用与成本优化上潜力更大",
-            "unsupported_claim: 建议按“前沿能力+本地化落地”双轨策略布局"
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "中美AI发展各有优势",
+            "技术与模型：美国在基础模型和算力生态上领先，中国在工程化落地和场景迭代速度上更快",
+            "产业应用：美国在企业软件、云平台与科研转化方面优势明显，中国在政务、制造、零售和移动互联网场景渗透更深",
+            "数据与监管：美国更强调市场驱动与开源创新，中国在数据治理、行业合规与规模化部署上推进更集中",
+            "人才与资本：美国顶尖研究人才和风险投资体系更成熟，中国在应用型人才储备和产业投资执行效率上具备优势"
           ],
-          "evidence": [],
-          "suggestions": [
-            "为无证据结论补充可核查依据，或移除该结论。"
+          "suggestions": [],
+          "diagnostics": [
+            {
+              "claim": "中美AI发展各有优势",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "技术与模型：美国在基础模型和算力生态上领先，中国在工程化落地和场景迭代速度上更快",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "产业应用：美国在企业软件、云平台与科研转化方面优势明显，中国在政务、制造、零售和移动互联网场景渗透更深",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "数据与监管：美国更强调市场驱动与开源创新，中国在数据治理、行业合规与规模化部署上推进更集中",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "人才与资本：美国顶尖研究人才和风险投资体系更成熟，中国在应用型人才储备和产业投资执行效率上具备优势",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "结论：短期看美国在前沿突破上更强，中期看中国在大规模应用与成本优化上潜力更大",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "美国拥有头部基础模型公司与云厂商生态优势"
+            },
+            {
+              "claim": "建议按“前沿能力+本地化落地”双轨策略布局",
+              "label": "supported",
+              "match_level": "normalized_match",
+              "matched_evidence": "中国在政企与消费互联网场景具备大规模部署经验"
+            },
+            {
+              "summary": {
+                "claim_count": 7,
+                "unsupported_count": 0,
+                "evidence_missing_count": 0,
+                "evidence_mismatch_count": 0,
+                "unsupported_ratio": 0.0,
+                "pseudo_false_negative_ratio": 0.0
+              }
+            }
           ]
         },
         "completeness": {
@@ -156,7 +266,8 @@
           "evidence": [
             "covered:6/6"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         },
         "structure": {
           "score": 0.8,
@@ -170,7 +281,8 @@
           ],
           "suggestions": [
             "按结论-依据-行动的顺序重组内容，并增加衔接语。"
-          ]
+          ],
+          "diagnostics": []
         },
         "usability": {
           "score": 1.0,
@@ -179,23 +291,37 @@
             "action_hits:2",
             "has_steps:True"
           ],
-          "suggestions": []
+          "suggestions": [],
+          "diagnostics": []
         }
       },
       "final": {
-        "total_score": 0.6100000000000001,
-        "verdict": "failed",
-        "summary": "correctness=0.00, completeness=1.00, structure=0.80, usability=1.00, total=0.61, verdict=failed"
+        "total_score": 0.96,
+        "verdict": "passed",
+        "summary": "correctness=1.00, completeness=1.00, structure=0.80, usability=1.00, total=0.96, verdict=passed"
       },
       "sample_id": "sample-3"
     }
   ],
   "regression_summary": {
     "dataset_version": "v1",
-    "compared_at": 1774082127.711434,
+    "compared_at": 1774084226.7567942,
     "tolerance": 0.05,
     "regression_count": 0,
     "has_regression": false,
-    "regressions": []
+    "regressions": [],
+    "correctness_metrics": {
+      "baseline": {
+        "unsupported_ratio": 0.4444444444444444,
+        "pseudo_false_negative_ratio": 0.16666666666666666
+      },
+      "current": {
+        "unsupported_ratio": 0.4444444444444444,
+        "pseudo_false_negative_ratio": 0.16666666666666666
+      },
+      "metric_regressions": []
+    },
+    "calibration_drift": false,
+    "alerts": []
   }
 }
