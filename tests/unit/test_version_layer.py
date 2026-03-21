@@ -5,6 +5,9 @@ from pathlib import Path
 
 from shannon.storage.version_layer.git_version_store import GitVersionStore
 
+# 中文注释：版本层单测
+# 目标：验证 task 提交/阶段打标与 append-only 禁令（禁止 merge/rebase）
+
 
 def _run(cmd: list[str], cwd: Path) -> str:
     proc = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, check=False)
@@ -14,6 +17,7 @@ def _run(cmd: list[str], cwd: Path) -> str:
 
 
 def test_version_layer_commit_and_tag(tmp_path: Path):
+    # 中文注释：在临时仓库验证最小可用提交与阶段标签流程
     repo = tmp_path / "repo"
     repo.mkdir(parents=True, exist_ok=True)
     _run(["git", "init"], cwd=repo)
@@ -45,6 +49,7 @@ def test_version_layer_commit_and_tag(tmp_path: Path):
 
 
 def test_version_layer_forbid_merge_rebase(tmp_path: Path):
+    # 中文注释：治理测试，必须阻断会改写历史的危险操作
     store = GitVersionStore(repo_root=str(tmp_path))
 
     merge_blocked = False

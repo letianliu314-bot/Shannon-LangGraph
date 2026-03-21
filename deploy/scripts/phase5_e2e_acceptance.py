@@ -8,6 +8,10 @@ from shannon.orchestration.orchestrator.gatekeeper import PhaseGatekeeper
 from shannon.storage.memory_layer.store import SharedMemoryStore
 from shannon.storage.version_layer.git_version_store import GitVersionStore
 
+# 中文注释：Phase 5 端到端验收脚本
+# 目的：串联验证 Memory/Prompt/Version/Gatekeeper 四层协同
+# 覆盖点：排序字段完整性、prompt 降级容错、append-only 守卫、阶段放行链路
+
 
 def _run(cmd: list[str], cwd: Path) -> str:
     proc = subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, check=False)
@@ -17,7 +21,8 @@ def _run(cmd: list[str], cwd: Path) -> str:
 
 
 def run_checks() -> None:
-    # Memory Layer + ranking
+    # 中文注释：1) Memory Layer + ranking
+    # 验证质量分与时间衰减字段已写入并可被检索返回
     root = Path("reports/_phase5_acceptance_tmp").resolve()
     if root.exists():
         _run(["rm", "-rf", str(root)], cwd=Path(".").resolve())
@@ -42,12 +47,14 @@ def run_checks() -> None:
     hits = store.search_records(run_id="run-e2e", capability="ranking", limit=10)
     assert hits and "quality_score" in hits[0] and "decay_score" in hits[0] and "final_score" in hits[0]
 
-    # Prompt Expert integration
+    # 中文注释：2) Prompt Expert integration
+    # 允许主路径或 fallback，确保端到端链路不会因模型异常中断
     task = TaskContract(id="task-1", title="infra", goal="analyze", description="analyze", deliverable="summary")
     _, meta = _resolve_prompt_contract(task=task, user_request="analyze infra", refined={})
     assert meta["status"] in {"ok", "fallback"}
 
-    # Version Layer + append-only guard
+    # 中文注释：3) Version Layer + append-only guard
+    # 在临时仓库中验证 task 提交与禁止 merge/rebase 规则
     repo = Path("reports/_phase5_acceptance_repo").resolve()
     if repo.exists():
         _run(["rm", "-rf", str(repo)], cwd=Path(".").resolve())
@@ -82,7 +89,8 @@ def run_checks() -> None:
         merge_blocked = True
     assert merge_blocked
 
-    # Gatekeeper end-to-end check
+    # 中文注释：4) Gatekeeper end-to-end check
+    # 当前置 phase 全部通过时，phase-5 必须放行
     keeper = PhaseGatekeeper()
     keeper._gate_file = lambda run_id, phase: store._run_dir(run_id) / "stages" / phase / "gate.json"  # type: ignore[attr-defined]
     keeper._gate_log = lambda run_id: store._run_dir(run_id) / "stages" / "gate_log.jsonl"  # type: ignore[attr-defined]

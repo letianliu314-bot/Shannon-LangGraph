@@ -4,8 +4,12 @@ from pathlib import Path
 
 from shannon.storage.memory_layer.store import SharedMemoryStore
 
+# 中文注释：共享记忆层单测
+# 目标：验证写入检索契约、路径安全与质量优先+时间衰减排序策略
+
 
 def test_shared_memory_contract(tmp_path: Path):
+    # 中文注释：基础契约测试，确认 upsert 与 search 的核心字段一致
     store = SharedMemoryStore(root_dir=str(tmp_path / "reports"))
     store.ensure_run_manifest("run-1")
 
@@ -27,6 +31,7 @@ def test_shared_memory_contract(tmp_path: Path):
 
 
 def test_shared_memory_blocks_path_traversal(tmp_path: Path):
+    # 中文注释：安全测试，禁止通过 ../ 进行目录穿越写入
     store = SharedMemoryStore(root_dir=str(tmp_path / "reports"))
     store.ensure_run_manifest("run-1")
 
@@ -40,6 +45,7 @@ def test_shared_memory_blocks_path_traversal(tmp_path: Path):
 
 
 def test_shared_memory_quality_first_with_time_decay(tmp_path: Path):
+    # 中文注释：排序测试，验证“质量优先 + 时间衰减”联合评分逻辑
     store = SharedMemoryStore(root_dir=str(tmp_path / "reports"))
     store.ensure_run_manifest("run-rank")
 
