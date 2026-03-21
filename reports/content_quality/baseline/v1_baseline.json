@@ -1,0 +1,21 @@
+{
+  "dataset_version": "v1",
+  "updated_at": 1774081207.4392278,
+  "change_note": "baseline refreshed by acceptance script",
+  "samples": {
+    "sample-1": {
+      "correctness": 0.6666666666666667,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 1.0,
+      "total": 0.8433333333333333
+    },
+    "sample-2": {
+      "correctness": 0.0,
+      "completeness": 0.0,
+      "structure": 1.0,
+      "usability": 0.5,
+      "total": 0.30000000000000004
+    }
+  }
+}

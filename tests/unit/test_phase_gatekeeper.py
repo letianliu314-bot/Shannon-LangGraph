@@ -41,3 +41,37 @@ def test_phase_gatekeeper_rejects_invalid_status(tmp_path: Path):
     except ValueError:
         raised = True
     assert raised
+
+
+def test_phase_gatekeeper_warning_requires_explicit_allow(tmp_path: Path):
+    store = SharedMemoryStore(root_dir=str(tmp_path / "reports"))
+    store.ensure_run_manifest("run-3")
+
+    keeper = PhaseGatekeeper()
+    keeper._gate_file = lambda run_id, phase: store._run_dir(run_id) / "stages" / phase / "gate.json"  # type: ignore[attr-defined]
+    keeper._gate_log = lambda run_id: store._run_dir(run_id) / "stages" / "gate_log.jsonl"  # type: ignore[attr-defined]
+
+    keeper.record_decision("run-3", "phase-1", "warning", "quality warning")
+    blocked = keeper.can_enter("run-3", "phase-2")
+    assert blocked["allowed"] is False
+    assert blocked["gate_status"] == "frozen"
+
+
+def test_phase_gatekeeper_warning_can_controlled_pass(tmp_path: Path):
+    store = SharedMemoryStore(root_dir=str(tmp_path / "reports"))
+    store.ensure_run_manifest("run-4")
+
+    keeper = PhaseGatekeeper()
+    keeper._gate_file = lambda run_id, phase: store._run_dir(run_id) / "stages" / phase / "gate.json"  # type: ignore[attr-defined]
+    keeper._gate_log = lambda run_id: store._run_dir(run_id) / "stages" / "gate_log.jsonl"  # type: ignore[attr-defined]
+
+    keeper.record_decision(
+        "run-4",
+        "phase-1",
+        "warning",
+        "quality warning with controlled pass",
+        metadata={"quality": {"allow_warning_pass": True, "risk": "tracked"}},
+    )
+    allowed = keeper.can_enter("run-4", "phase-2")
+    assert allowed["allowed"] is True
+    assert allowed["gate_status"] == "open"

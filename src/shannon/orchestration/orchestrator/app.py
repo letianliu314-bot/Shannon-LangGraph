@@ -455,7 +455,7 @@ def current_state_db(thread_id: str):
     return {"thread_id": thread_id, "state": state_row}
 
 
-# 中文注释：阶段门禁决策（passed/failed）
+# 中文注释：阶段门禁决策（passed/warning/failed）
 @app.post("/threads/{thread_id}/phases/{phase}/gate")
 def phase_gate_decision(thread_id: str, phase: str, req: Dict[str, Any]):
     status = str(req.get("status") or "").strip().lower()

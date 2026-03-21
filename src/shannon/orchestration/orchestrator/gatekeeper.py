@@ -50,20 +50,49 @@ class PhaseGatekeeper:
         for prev_idx in range(idx):
             prev_phase = _PHASE_ORDER[prev_idx]
             prev_gate = self._read_gate(run_id, prev_phase)
-            if not prev_gate or str(prev_gate.get("status") or "").lower() != "passed":
+            if not prev_gate:
                 return {
                     "allowed": False,
                     "gate_status": "frozen",
                     "reason": f"previous phase not passed: {prev_phase}",
                 }
 
+            prev_status = str(prev_gate.get("status") or "").lower()
+            if prev_status == "passed":
+                continue
+            if prev_status == "failed":
+                return {
+                    "allowed": False,
+                    "gate_status": "frozen",
+                    "reason": f"previous phase failed: {prev_phase}",
+                }
+            if prev_status == "warning":
+                metadata = prev_gate.get("metadata") if isinstance(prev_gate.get("metadata"), dict) else {}
+                quality = metadata.get("quality") if isinstance(metadata.get("quality"), dict) else {}
+                allow_warning = bool(
+                    metadata.get("allow_warning_pass")
+                    or quality.get("allow_warning_pass")
+                )
+                if allow_warning:
+                    continue
+                return {
+                    "allowed": False,
+                    "gate_status": "frozen",
+                    "reason": f"previous phase warning requires explicit allow: {prev_phase}",
+                }
+            return {
+                "allowed": False,
+                "gate_status": "frozen",
+                "reason": f"previous phase invalid status: {prev_phase}",
+            }
+
         return {"allowed": True, "gate_status": "open", "reason": "all previous phases passed"}
 
     # 中文注释：函数 record_decision 的入口
     def record_decision(self, run_id: str, phase: str, status: str, reason: str, metadata: Dict[str, Any] | None = None) -> Dict[str, Any]:
         normalized_status = str(status or "").strip().lower()
-        if normalized_status not in {"passed", "failed"}:
-            raise ValueError("status must be passed|failed")
+        if normalized_status not in {"passed", "failed", "warning"}:
+            raise ValueError("status must be passed|failed|warning")
 
         payload: Dict[str, Any] = {
             "run_id": run_id,

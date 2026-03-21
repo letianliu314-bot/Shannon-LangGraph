@@ -1,0 +1,136 @@
+{
+  "dataset_version": "v1",
+  "mode": "regression",
+  "sample_count": 2,
+  "reports": [
+    {
+      "input_summary": {
+        "task_goal": "给出数据字段质量检查建议",
+        "target_user": "analyst",
+        "content_length": 45,
+        "evidence_count": 2,
+        "key_point_count": 3
+      },
+      "timestamp": 1774081207.521162,
+      "dimensions": {
+        "correctness": {
+          "score": 0.6666666666666667,
+          "findings": [
+            "unsupported_claim: 输出修复建议"
+          ],
+          "evidence": [
+            "检查 dataset 字段",
+            "检查 field 完整性"
+          ],
+          "suggestions": [
+            "为无证据结论补充可核查依据，或移除该结论。"
+          ]
+        },
+        "completeness": {
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "covered:3/3"
+          ],
+          "suggestions": []
+        },
+        "structure": {
+          "score": 0.8,
+          "findings": [
+            "logic_link_weak: 缺少明显逻辑连接词"
+          ],
+          "evidence": [
+            "1. 检查 dataset 字段。",
+            "2. 检查 field 完整性。",
+            "3. 输出修复建议。"
+          ],
+          "suggestions": [
+            "按结论-依据-行动的顺序重组内容，并增加衔接语。"
+          ]
+        },
+        "usability": {
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "action_hits:2",
+            "has_steps:True"
+          ],
+          "suggestions": []
+        }
+      },
+      "final": {
+        "total_score": 0.8433333333333333,
+        "verdict": "passed",
+        "summary": "correctness=0.67, completeness=1.00, structure=0.80, usability=1.00, total=0.84, verdict=passed"
+      },
+      "sample_id": "sample-1"
+    },
+    {
+      "input_summary": {
+        "task_goal": "生成质量评估总结",
+        "target_user": "pm",
+        "content_length": 14,
+        "evidence_count": 1,
+        "key_point_count": 2
+      },
+      "timestamp": 1774081207.5212018,
+      "dimensions": {
+        "correctness": {
+          "score": 0.0,
+          "findings": [
+            "unsupported_claim: 系统完全可靠",
+            "unsupported_claim: 无需任何检查"
+          ],
+          "evidence": [],
+          "suggestions": [
+            "为无证据结论补充可核查依据，或移除该结论。"
+          ]
+        },
+        "completeness": {
+          "score": 0.0,
+          "findings": [
+            "missing_key_point: 风险",
+            "missing_key_point: 下一步"
+          ],
+          "evidence": [
+            "covered:0/2"
+          ],
+          "suggestions": [
+            "补充缺失关键点，并与任务目标逐条对齐。"
+          ]
+        },
+        "structure": {
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "系统完全可靠。无需任何检查。"
+          ],
+          "suggestions": []
+        },
+        "usability": {
+          "score": 0.5,
+          "findings": [],
+          "evidence": [
+            "action_hits:1",
+            "has_steps:False"
+          ],
+          "suggestions": []
+        }
+      },
+      "final": {
+        "total_score": 0.30000000000000004,
+        "verdict": "failed",
+        "summary": "correctness=0.00, completeness=0.00, structure=1.00, usability=0.50, total=0.30, verdict=failed"
+      },
+      "sample_id": "sample-2"
+    }
+  ],
+  "regression_summary": {
+    "dataset_version": "v1",
+    "compared_at": 1774081207.521374,
+    "tolerance": 0.05,
+    "regression_count": 0,
+    "has_regression": false,
+    "regressions": []
+  }
+}
