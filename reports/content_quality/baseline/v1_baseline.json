@@ -1,6 +1,6 @@
 {
   "dataset_version": "v1",
-  "updated_at": 1774081207.4392278,
+  "updated_at": 1774082125.38316,
   "change_note": "baseline refreshed by acceptance script",
   "samples": {
     "sample-1": {
@@ -16,6 +16,13 @@
       "structure": 1.0,
       "usability": 0.5,
       "total": 0.30000000000000004
+    },
+    "sample-3": {
+      "correctness": 0.0,
+      "completeness": 1.0,
+      "structure": 0.8,
+      "usability": 1.0,
+      "total": 0.6100000000000001
     }
   }
 }

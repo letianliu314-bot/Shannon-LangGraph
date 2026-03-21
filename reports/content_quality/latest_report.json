@@ -1,7 +1,7 @@
 {
   "dataset_version": "v1",
   "mode": "regression",
-  "sample_count": 2,
+  "sample_count": 3,
   "reports": [
     {
       "input_summary": {
@@ -11,7 +11,7 @@
         "evidence_count": 2,
         "key_point_count": 3
       },
-      "timestamp": 1774081207.521162,
+      "timestamp": 1774082127.7112262,
       "dimensions": {
         "correctness": {
           "score": 0.6666666666666667,
@@ -73,7 +73,7 @@
         "evidence_count": 1,
         "key_point_count": 2
       },
-      "timestamp": 1774081207.5212018,
+      "timestamp": 1774082127.711261,
       "dimensions": {
         "correctness": {
           "score": 0.0,
@@ -123,11 +123,76 @@
         "summary": "correctness=0.00, completeness=0.00, structure=1.00, usability=0.50, total=0.30, verdict=failed"
       },
       "sample_id": "sample-2"
+    },
+    {
+      "input_summary": {
+        "task_goal": "中美AI发展对比",
+        "target_user": "strategy-analyst",
+        "content_length": 278,
+        "evidence_count": 3,
+        "key_point_count": 6
+      },
+      "timestamp": 1774082127.71133,
+      "dimensions": {
+        "correctness": {
+          "score": 0.0,
+          "findings": [
+            "unsupported_claim: 中美AI发展各有优势",
+            "unsupported_claim: 技术与模型：美国在基础模型和算力生态上领先，中国在工程化落地和场景迭代速度上更快",
+            "unsupported_claim: 产业应用：美国在企业软件、云平台与科研转化方面优势明显，中国在政务、制造、零售和移动互联网场景渗透更深",
+            "unsupported_claim: 数据与监管：美国更强调市场驱动与开源创新，中国在数据治理、行业合规与规模化部署上推进更集中",
+            "unsupported_claim: 人才与资本：美国顶尖研究人才和风险投资体系更成熟，中国在应用型人才储备和产业投资执行效率上具备优势",
+            "unsupported_claim: 结论：短期看美国在前沿突破上更强，中期看中国在大规模应用与成本优化上潜力更大",
+            "unsupported_claim: 建议按“前沿能力+本地化落地”双轨策略布局"
+          ],
+          "evidence": [],
+          "suggestions": [
+            "为无证据结论补充可核查依据，或移除该结论。"
+          ]
+        },
+        "completeness": {
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "covered:6/6"
+          ],
+          "suggestions": []
+        },
+        "structure": {
+          "score": 0.8,
+          "findings": [
+            "logic_link_weak: 缺少明显逻辑连接词"
+          ],
+          "evidence": [
+            "中美AI发展各有优势。",
+            "1. 技术与模型：美国在基础模型和算力生态上领先，中国在工程化落地和场景迭代速度上更快。",
+            "2. 产业应用：美国在企业软件、云平台与科研转化方面优势明显，中国在政务、制造、零售和移动互联网场景渗透更深。"
+          ],
+          "suggestions": [
+            "按结论-依据-行动的顺序重组内容，并增加衔接语。"
+          ]
+        },
+        "usability": {
+          "score": 1.0,
+          "findings": [],
+          "evidence": [
+            "action_hits:2",
+            "has_steps:True"
+          ],
+          "suggestions": []
+        }
+      },
+      "final": {
+        "total_score": 0.6100000000000001,
+        "verdict": "failed",
+        "summary": "correctness=0.00, completeness=1.00, structure=0.80, usability=1.00, total=0.61, verdict=failed"
+      },
+      "sample_id": "sample-3"
     }
   ],
   "regression_summary": {
     "dataset_version": "v1",
-    "compared_at": 1774081207.521374,
+    "compared_at": 1774082127.711434,
     "tolerance": 0.05,
     "regression_count": 0,
     "has_regression": false,
