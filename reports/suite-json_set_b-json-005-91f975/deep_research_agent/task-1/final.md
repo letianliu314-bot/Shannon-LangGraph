@@ -1,0 +1,12 @@
+Findings Summary
+- task_id: task-1
+- task_title: Research core_problem
+- deliverable: facts_and_citations
+- retrieval_metrics: selected_total=3, fetched_total=3
+- source_count: 2
+Sources:
+- https://ui.adsabs.harvard.edu/abs/2010AdAst2010E...5D/abstract
+- https://www.shortform.com/blog/core-problem
+Notes:
+- Generated via resilient fallback to preserve workflow continuity.
+- user_request: 围绕“AI销售助手的异议处理与跟进建议”，请生成5条JSON训练数据，字段为instruction,customer_message,assistant_reply,intent。
