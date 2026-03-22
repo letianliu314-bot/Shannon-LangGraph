@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-json_set_b-json-003-1bf03c",
+  "task_id": "task-2",
+  "stage": "phase-1",
+  "capability": "supplemental-angle-2",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-json_set_b-json-003-1bf03c/deep_research_agent/task-2/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-json_set_b-json-003-1bf03c/deep_research_agent/task-2/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774188091.283859,
+  "content": "Findings Summary\n- task_id: task-2\n- task_title: Research supplemental angle 2\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=3, fetched_total=3\n- source_count: 2\nSources:\n- https://www.mathsisfun.com/geometry/supplementary-angles.html\n- https://thirdspacelearning.com/us/math-resources/topic-guides/geometry/supplementary-angles/\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 围绕“医疗AI问诊助手的安全回复与风险提示”，请生成5条JSON训练数据，字段为instruction,patient_query,safe_answer,risk_flag。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
