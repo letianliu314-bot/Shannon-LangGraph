@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-003-1d0923",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AI",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-003-1d0923/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-003-1d0923/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774185101.100319,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请比较医疗影像AI在肺结节,乳腺筛查,卒中急诊三个场景的商业化进展,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=6, fetched_total=10\n- source_count: 5\nSources:\n- https://pmc.ncbi.nlm.nih.gov/articles/PMC10950116/\n- https://pmc.ncbi.nlm.nih.gov/articles/PMC11925424/\n- https://www.nature.com/articles/s41598-025-93718-7\n- https://pmc.ncbi.nlm.nih.gov/about/userguide/\n- https://pmc.ncbi.nlm.nih.gov/about/disclaimer/\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请比较医疗影像AI在肺结节、乳腺筛查、卒中急诊三个场景的商业化进展，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
