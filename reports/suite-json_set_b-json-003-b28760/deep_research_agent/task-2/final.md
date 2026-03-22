@@ -1,0 +1,3 @@
+I can help with creating safe, risk-aware JSON training samples, but to ground them in verifiable evidence I need to fetch relevant official/academic sources on medical AI safety and risk disclosure. I will perform a quick evidence-gathering sweep (up to 8 sources) and then produce 5 JSON samples anchored to that evidence. Please note: I will only cite claims that are verifiable from the fetched sources, and I will explicitly note any uncertainties or conflicts.
+
+Proceeding to gather sources now.
