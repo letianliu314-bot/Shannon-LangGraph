@@ -1,0 +1,16 @@
+{
+  "run_id": "test-json_set_b-json-003-afab96",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "core_problem",
+  "agent": "deep_research_agent",
+  "artifact_path": "test-json_set_b-json-003-afab96/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/test-json_set_b-json-003-afab96/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774178872.306615,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research core_problem\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=3, fetched_total=3\n- source_count: 3\nSources:\n- https://business.purdue.edu/master-of-business/online-masters-in-business-administration/posts/problem-solving-techniques-in-business.php\n- https://www.mindpopgroup.com/strategy-content/define-the-core-problem\n- https://www.shortform.com/blog/core-problem\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 围绕“医疗AI问诊助手的安全回复与风险提示”，请生成5条JSON训练数据，字段为instruction,patient_query,safe_answer,risk_flag。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
