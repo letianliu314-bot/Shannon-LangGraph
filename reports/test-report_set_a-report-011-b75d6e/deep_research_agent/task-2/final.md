@@ -1,0 +1,36 @@
+# PART 1 - RETRIEVED INFORMATION
+
+Source 1: https://www.math-only-math.com/supplementary-angles.html
+- relevance to original query: 低
+- content snapshot (based on snippets): 说明“互为补角”的定义及相关示例，属于几何教学/练习内容，与AI在药物发现早期筛选的应用无直接关联。
+- why relevant/irrelevant: 与AI药物发现的应用格局无直接联系，属于纯几何概念的教学材料。
+
+Source 2: https://tutors.com/lesson/supplementary-angles
+- relevance to original query: 低
+- content snapshot: 提供补角的定义、示例以及相关学习资源（含导师/课程信息）。属于教育辅导类内容。
+- why relevant/irrelevant: 与药物发现或AI技术无直接关联，无法用于分析AI在药物筛选中的应用格局。
+
+Source 3: https://www.cuemath.com/geometry/supplementary-angles/
+- relevance to original query: 低
+- content snapshot: 补角的定义及相关几何知识，面向中小学生的科普/教学页面。
+- why relevant/irrelevant: 与主题无关，未覆盖AI、药物发现或早期筛选的相关技术或产业信息。
+
+# PART 2 - NOTES
+
+- 数据对齐与冲突
+  - 冲突情况：不存在直接冲突，只有主题完全不符。三条来源均围绕“补角/Supplementary Angles”的几何概念，与“AI在药物发现早期筛选中的应用格局、关键公司与技术瓶颈”无任何直接证据或相关信息。
+  - 证据优先级：从可用结果看，均属于教育性几何内容，非官方机构/学术论文/行业报道，证据对于原问题几乎无支撑。
+
+- 数据缺口与不确定性
+  - 主要不确定性：在当前检索结果中，没有任何与AI药物发现相关的可验证证据、公司信息、技术瓶颈或市场格局的来源。因此，无法就原问题给出可信的结论、数据点或证据映射。
+  - 需要的后续工作：需要重新围绕原始问题进行专门的检索，优先级如下：
+    - 官方与学术权威来源：如大型制药/生物科技公司、药物发现平台的白皮书、同行评审论文、学术机构的研究报告、政府/监管机构的技术评估。
+    - 行业与分析机构资料：如Nature Biotechnology、Science、Cell、Nature Reviews Drug Discovery、FDA/EMA公开材料、投行/投资机构的行业研究。
+    - 行业公司与技术栈资料：Exscientia、 Schrödinger、 Insitro、 Relay Therapeutics、DERM等在AI药物发现领域的公开资料、专利、年度报告、技术白皮书。
+  - 接下来应执行的检索路径：进行新的 web_search，聚焦“AI in early drug discovery screening”、“AI-based screening in drug discovery”、“lead optimization with AI”、“de novo design using AI”、“graph neural networks in drug discovery”等关键词，并对结果进行严格的来源鉴别与证据映射。
+
+- 可交付的下一步建议
+  - 进行一次面向药物发现领域的系统检索，输出包含：行业格局要点、代表性公司与技术栈、核心瓶颈（如数据质量、可解释性、法规合规、计算资源、覆盖率等），以及各点的证据链（来源、日期、可信度）。
+  - 汇总成调研报告格式，包含 canonical_facts、claim_evidence_map、conflicts、uncertainties、gap_ledger等结构化字段（如需集成形式）。若需要，我可以在获取到相关证据后，按该结构整理。
+
+总结：当前提供的三条来源与“AI在药物发现早期筛选中的应用格局、关键公司与技术瓶颈”主题完全不相关，因此无法直接提取可验证的结论。建议尽快执行针对药物发现与AI的专门检索，以获得可证据支撑的调研结果。
