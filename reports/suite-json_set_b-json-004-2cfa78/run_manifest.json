@@ -1,0 +1,17 @@
+{
+  "run_id": "suite-json_set_b-json-004-2cfa78",
+  "created_at": 1774190609.1539829,
+  "layout_version": "v1",
+  "policy": {
+    "single_branch": true,
+    "append_only": true,
+    "forbid_rebase": true,
+    "forbid_merge": true
+  },
+  "stage": "phase-1",
+  "phase": "phase-1",
+  "gate_status": "open",
+  "strategy": "deep",
+  "user_id": "anonymous",
+  "tenant_id": ""
+}

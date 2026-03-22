@@ -110,10 +110,8 @@ def evaluate_report_content(content: str, task_results: List[Dict[str, Any]] | N
     gates = report_cfg.get("gates") if isinstance(report_cfg.get("gates"), dict) else {}
     scoring = report_cfg.get("scoring") if isinstance(report_cfg.get("scoring"), dict) else {}
 
-    min_char_raw = gates.get("min_char_count", 500)
-    min_citation_raw = gates.get("min_citation_count", 1)
-    min_char_count = int(min_char_raw if min_char_raw is not None else 500)
-    min_citation_count = int(min_citation_raw if min_citation_raw is not None else 1)
+    min_char_count = int(gates.get("min_char_count", 500) or 500)
+    min_citation_count = int(gates.get("min_citation_count", 1) or 1)
     require_fluency = bool(gates.get("require_fluency_pass", True))
 
     text = str(content or "")
