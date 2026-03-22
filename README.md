@@ -179,7 +179,7 @@ curl -X POST http://127.0.0.1:8000/runs \
   -d '{
     "thread_id": "my-first-run",
     "user_request": "对比分析 GPT-5 和 Claude-4 的技术特点",
-    "strategy": "standard"
+    "strategy": "deep"
   }'
 # 预期: 202 Accepted → {"thread_id":"my-first-run","status":"accepted"}
 ```
@@ -238,7 +238,7 @@ docker-compose logs -f llm_service
 {
   "thread_id": "unique-id",
   "user_request": "你的研究问题",
-  "strategy": "quick | standard | deep",
+  "strategy": "deep",
   "workflow_template": "模板名（可选）",
   "workflow_context": { "自定义上下文": "..." },
   "strict_output": false,
@@ -346,13 +346,11 @@ curl -s -X POST http://127.0.0.1:8000/runs \
 | **medium** | gpt-5-mini | refine（意图理解）、通用任务 | 成本与质量均衡 |
 | **large** | gpt-5.1 | finalize（最终汇总）、复杂深度任务 | 保证输出质量 |
 
-### 三种执行策略
+### 单一执行策略
 
 | 策略 | 说明 | 适用场景 |
 |------|------|----------|
-| `quick` | 最少任务、快速完成 | 简单查询、快速验证 |
-| `standard` | 标准深度、适中任务数 | 日常研究、报告生成 |
-| `deep` | 最大深度、多轮迭代 | 深度分析、数据集生成 |
+| `deep` | 统一 deep 语义，自动按任务复杂度执行多阶段研究与汇总 | 通用研究、深度分析、报告生成 |
 
 ### 超时配置全景
 

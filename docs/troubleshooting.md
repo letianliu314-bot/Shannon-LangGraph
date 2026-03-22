@@ -102,7 +102,7 @@ curl -s http://127.0.0.1:8000/healthz
 
 # 写入测试
 curl -s -X POST http://127.0.0.1:8000/runs -H 'content-type: application/json' \
-  -d '{"thread_id":"persist-test","user_request":"ping","strategy":"quick"}'
+  -d '{"thread_id":"persist-test","user_request":"ping","strategy":"deep"}'
 
 # 验证落库
 docker exec -it shannon-postgres-1 psql -U postgres -d shannon \

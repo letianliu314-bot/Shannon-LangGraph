@@ -1680,12 +1680,7 @@ def responses(req: ResponsesRequest) -> ResponsesResponse:
 @app.post("/agent/refine", response_model=RefineResponse)
 def refine(req: RefineRequest) -> RefineResponse:
     strategy = _normalize_strategy(req.strategy)
-    tier = {
-        "quick": ModelTier.SMALL.value,
-        "standard": ModelTier.MEDIUM.value,
-        "deep": ModelTier.LARGE.value,
-    }[strategy]
-    model = resolve_model(tier)
+    model = resolve_model(ModelTier.LARGE.value)
 
     # 中文注释：先通过模型做一次语义规范化；失败时用规则兜底
     client = OpenAIClient()
@@ -1710,6 +1705,7 @@ def refine(req: RefineRequest) -> RefineResponse:
 # 中文注释：函数 decompose 的入口
 @app.post("/agent/decompose", response_model=DecomposeResponse)
 def decompose(req: DecomposeRequest) -> DecomposeResponse:
+    strategy = _normalize_strategy(req.strategy)
     refined = req.refined or {}
     areas = refined.get("research_areas") if isinstance(refined.get("research_areas"), list) else []
     if not areas:
@@ -1720,7 +1716,7 @@ def decompose(req: DecomposeRequest) -> DecomposeResponse:
     compact_refined = _compact_refined_for_decompose(refined)
     payload = {
         "user_request": str(req.user_request or "").strip()[:1200],
-        "strategy": req.strategy,
+        "strategy": strategy,
         "refined": compact_refined,
         "query_type": query_type or "",
         "normalized_question": compact_refined.get("normalized_question", ""),
@@ -1731,7 +1727,7 @@ def decompose(req: DecomposeRequest) -> DecomposeResponse:
         "search_policy": "search_first",
     }
     decompose_system_prompt = build_decompose_system_prompt(
-        strategy=req.strategy,
+        strategy=strategy,
         query_type=query_type,
         research_areas=areas,
         available_tools=list(preset["tools_allowed"]),
@@ -1742,7 +1738,7 @@ def decompose(req: DecomposeRequest) -> DecomposeResponse:
 
     # 中文注释：decompose 逐级升级：small -> medium -> large，仅在产出无效时升级
     client = OpenAIClient()
-    tier_sequence = _decompose_tier_sequence(strategy=req.strategy, model_tier_hint=req.model_tier_hint)
+    tier_sequence = _decompose_tier_sequence(strategy=strategy, model_tier_hint=req.model_tier_hint)
     if not tier_sequence:
         tier_sequence = [ModelTier.SMALL.value]
 

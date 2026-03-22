@@ -208,11 +208,7 @@ def run(req: Dict[str, Any]):
     except Exception:  # noqa: BLE001
         decompose_http_retries = default_decompose_retries
 
-    raw_strategy = str(req.get("strategy") or "deep").strip().lower()
     strategy = "deep"
-    strategy_alias_deprecated = raw_strategy in {"quick", "standard"}
-    if strategy_alias_deprecated:
-        logger.warning("deprecated strategy alias received: %s -> %s", raw_strategy, strategy)
 
     state_in = {
         "thread_id": thread_id,
@@ -220,8 +216,6 @@ def run(req: Dict[str, Any]):
         "gate_status": str(gate_check.get("gate_status") or "open"),
         "user_request": user_request,
         "strategy": strategy,
-        "strategy_requested": raw_strategy,
-        "strategy_alias_deprecated": strategy_alias_deprecated,
         # 中文注释：并发上限、任务上限可由调用方覆盖
         "max_concurrency": int(req.get("max_concurrency", 3) or 3),
         "max_tasks": int(req.get("max_tasks", 6) or 6),
@@ -263,11 +257,7 @@ def run(req: Dict[str, Any]):
         session_id=thread_id,
         role="user",
         content=user_request,
-        metadata={
-            "strategy": state_in["strategy"],
-            "strategy_requested": state_in.get("strategy_requested"),
-            "strategy_alias_deprecated": bool(state_in.get("strategy_alias_deprecated")),
-        },
+        metadata={"strategy": state_in["strategy"]},
     )
 
     # 中文注释：初始化 run 目录清单，定义 reports/<run_id>/ 结构
@@ -278,8 +268,6 @@ def run(req: Dict[str, Any]):
                 "phase": state_in.get("phase"),
                 "gate_status": state_in.get("gate_status"),
                 "strategy": state_in.get("strategy"),
-                "strategy_requested": state_in.get("strategy_requested"),
-                "strategy_alias_deprecated": bool(state_in.get("strategy_alias_deprecated")),
                 "user_id": user_id,
                 "tenant_id": tenant_id,
             },
@@ -297,8 +285,6 @@ def run(req: Dict[str, Any]):
             message="workflow started",
             payload={
                 "strategy": state_in["strategy"],
-                "strategy_requested": state_in.get("strategy_requested"),
-                "strategy_alias_deprecated": bool(state_in.get("strategy_alias_deprecated")),
                 "run_id": thread_id,
                 "phase": state_in.get("phase"),
                 "gate_status": state_in.get("gate_status"),

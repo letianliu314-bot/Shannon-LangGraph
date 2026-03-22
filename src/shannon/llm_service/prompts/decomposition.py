@@ -52,7 +52,7 @@ COMMON_DECOMPOSITION_SUFFIX_TEMPLATE = (
     "'news' (recent articles), 'academic' (arxiv/papers), 'github', 'financial', 'local_cn', 'local_jp'\n\n"
     "Return ONLY valid JSON with this EXACT structure (no additional text):\n"
     "{\n"
-    '  "mode": "standard",\n'
+    '  "mode": "complex",\n'
     '  "complexity_score": 0.5,\n'
     '  "subtasks": [\n'
     "    {\n"
@@ -76,7 +76,7 @@ COMMON_DECOMPOSITION_SUFFIX_TEMPLATE = (
     "CRITICAL: Tool parameters MUST use EXACT parameter names from schemas. See available tools below.\n\n"
     "{tool_schemas_text}\n\n"
     "Rules:\n"
-    '- mode: must be "simple", "standard", or "complex"\n'
+    '- mode: must be "simple" or "complex"\n'
     "- complexity_score: number between 0.0 and 1.0\n"
     "- dependencies: array of task ID strings or empty array []\n"
     "- suggested_tools: empty array [] if no tools needed, otherwise list tool names\n"
@@ -89,31 +89,14 @@ COMMON_DECOMPOSITION_SUFFIX_TEMPLATE = (
     "- Let the semantic meaning of the query guide tool selection\n"
 )
 
-# 中文注释：研究策略引导（来自原项目）
-STRATEGY_GUIDANCE = {
-    "quick": (
-        "\n\nRESEARCH STRATEGY: quick\n"
-        "- Override the generic simple/complex ranges for this query.\n"
-        "- Prefer 1-3 broad subtasks that cover the main question.\n"
-        "- Focus on a high-level overview instead of exhaustive coverage.\n"
-        "- Avoid splitting into many narrow subtasks.\n"
-        "- Aim for complexity_score < 0.4.\n"
-    ),
-    "standard": (
-        "\n\nRESEARCH STRATEGY: standard\n"
-        "- Override the generic simple/complex ranges for this query.\n"
-        "- Prefer 3-5 focused subtasks that cover the key dimensions of the query.\n"
-        "- Balance breadth and depth; avoid unnecessary fragmentation.\n"
-        "- Aim for complexity_score between 0.4 and 0.6.\n"
-    ),
-    "deep": (
-        "\n\nRESEARCH STRATEGY: deep\n"
-        "- Override the generic simple/complex ranges for this query.\n"
-        "- Prefer 5-8 specialized subtasks that each explore a distinct aspect.\n"
-        "- Include follow-up subtasks when clarification or cross-checking is needed.\n"
-        "- Aim for complexity_score between 0.6 and 0.8.\n"
-    ),
-}
+# 中文注释：统一 deep 语义引导（去除旧策略分支）
+DEEP_STRATEGY_GUIDANCE = (
+    "\n\nRESEARCH STRATEGY: unified-deep\n"
+    "- Apply one canonical deep-oriented planning behavior for all research requests.\n"
+    "- Prefer specialized subtasks that cover distinct aspects with clear evidence contracts.\n"
+    "- Include follow-up subtasks when clarification or cross-checking is needed.\n"
+    "- Keep complexity_score aligned with request difficulty (typically >= 0.6 for deep research).\n"
+)
 
 
 # 中文注释：函数 _build_tool_schemas_text 的入口
@@ -158,9 +141,8 @@ def build_decompose_system_prompt(
     if isinstance(query_type, str) and query_type.strip().lower() == "company":
         prompt += DOMAIN_ANALYSIS_HINT
 
-    strategy_key = (strategy or "").strip().lower()
-    if prompt_source == "research" and strategy_key in STRATEGY_GUIDANCE:
-        prompt += STRATEGY_GUIDANCE[strategy_key]
+    if prompt_source == "research":
+        prompt += DEEP_STRATEGY_GUIDANCE
 
     if research_areas:
         valid_areas = [str(area) for area in research_areas if str(area).strip()]

@@ -1,8 +1,8 @@
 from shannon.llm_service.prompts.decomposition import (
     COMMON_DECOMPOSITION_SUFFIX_TEMPLATE,
+    DEEP_STRATEGY_GUIDANCE,
     GENERAL_PLANNING_IDENTITY,
     PROMPT_VERSION,
-    STRATEGY_GUIDANCE,
     build_decompose_system_prompt,
 )
 from shannon.llm_service.prompts.execution import (
@@ -23,7 +23,7 @@ __all__ = [
     "DOMAIN_ANALYSIS_HINT",
     "GENERAL_PLANNING_IDENTITY",
     "COMMON_DECOMPOSITION_SUFFIX_TEMPLATE",
-    "STRATEGY_GUIDANCE",
+    "DEEP_STRATEGY_GUIDANCE",
     "build_decompose_system_prompt",
     "RESEARCH_MODE_INSTRUCTION",
     "INTERPRETATION_PROMPT_SOURCES",
