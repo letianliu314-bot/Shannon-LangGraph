@@ -93,18 +93,18 @@ def test_compact_refined_for_decompose_limits_payload_size():
 
 
 def test_strategy_mapping_and_fallback():
-    assert _normalize_strategy("quick") == "quick"
-    assert _normalize_strategy("standard") == "standard"
+    assert _normalize_strategy("quick") == "deep"
+    assert _normalize_strategy("standard") == "deep"
     assert _normalize_strategy("deep") == "deep"
     assert _normalize_strategy("academic") == "deep"
 
-    assert _query_type_by_strategy("quick") == "quick_lookup"
-    assert _query_type_by_strategy("standard") == "standard_research"
+    assert _query_type_by_strategy("quick") == "deep_research"
+    assert _query_type_by_strategy("standard") == "deep_research"
     assert _query_type_by_strategy("deep") == "deep_research"
     assert _query_type_by_strategy("academic") == "deep_research"
 
-    assert _complexity_by_strategy("quick") == "low"
-    assert _complexity_by_strategy("standard") == "medium"
+    assert _complexity_by_strategy("quick") == "high"
+    assert _complexity_by_strategy("standard") == "high"
     assert _complexity_by_strategy("deep") == "high"
     assert _complexity_by_strategy("academic") == "high"
 

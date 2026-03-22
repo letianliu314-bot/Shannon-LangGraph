@@ -34,7 +34,7 @@ class ResearchTask(TypedDict, total=False):
 class ResearchState(TypedDict, total=False):
     # 中文注释：输入参数
     user_request: str
-    strategy: str  # quick/standard/deep
+    strategy: str  # unified deep semantics; legacy quick/standard map to deep
     thread_id: str
     max_concurrency: int
     max_tasks: int

@@ -122,10 +122,11 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _normalize_strategy(strategy: str | None) -> str:
-    # 中文注释：策略标准化，非法值回退 deep
-    normalized = (strategy or "deep").lower()
-    allowed = {"quick", "standard", "deep"}
-    return normalized if normalized in allowed else "deep"
+    # 中文注释：硬合并策略语义：legacy quick/standard 统一映射到 deep
+    normalized = (strategy or "deep").lower().strip()
+    if normalized in {"quick", "standard", "deep"}:
+        return "deep"
+    return "deep"
 
 
 def determine_model_tier(strategy: str, phase: str) -> str:
@@ -140,11 +141,9 @@ def determine_model_tier(strategy: str, phase: str) -> str:
     if phase == "finalize":
         return "large"
 
-    # 中文注释：规划阶段：quick/standard/deep 分别对应 small/medium/large
-    if normalized == "quick":
-        return "small"
-    if normalized == "standard":
-        return "medium"
+    # 中文注释：硬合并后，规划阶段统一按 deep 语义执行
+    if normalized == "deep":
+        return "large"
     return "large"
 
 
@@ -632,6 +631,114 @@ def _has_transform_terminal_task(task_map: Dict[str, ResearchTask]) -> bool:
     return any(_is_transform_terminal_task(task) for task in task_map.values())
 
 
+def _ensure_integration_gate_in_plan(
+    task_map: Dict[str, ResearchTask],
+) -> Tuple[Dict[str, ResearchTask], Dict[str, int], Dict[str, List[str]], List[str], List[Dict[str, Any]], bool]:
+    # 中文注释：强制补齐最小多 agent 结构：至少两个 research 任务 + task-merge
+    ordered_tasks: List[Dict[str, Any]] = [dict(task) for task in task_map.values() if str(task.get("id") or "") != "task-merge"]
+
+    upstream_ids: List[str] = []
+    for task in ordered_tasks:
+        task_id = str(task.get("id") or "")
+        if not task_id:
+            continue
+        if _is_transform_terminal_task(task):
+            continue
+        upstream_ids.append(task_id)
+
+    # 中文注释：当 research 任务不足 2 个时补齐，保障最小并行研究拓扑
+    if len(upstream_ids) < 2:
+        next_idx = 1
+        existing_ids = {str(task.get("id") or "") for task in ordered_tasks}
+        while f"task-{next_idx}" in existing_ids:
+            next_idx += 1
+
+        while len(upstream_ids) < 2:
+            task_id = f"task-{next_idx}"
+            next_idx += 1
+            existing_ids.add(task_id)
+            synthetic_topic = f"supplemental angle {len(upstream_ids) + 1}"
+            ordered_tasks.append(
+                {
+                    "id": task_id,
+                    "title": f"Research {synthetic_topic}",
+                    "goal": f"Collect verifiable evidence about: {synthetic_topic}",
+                    "description": f"Research key evidence and sources for {synthetic_topic}. Prioritize official and academic references.",
+                    "deps": [],
+                    "deliverable": "facts_and_citations",
+                    "acceptance_criteria": ["contains key findings", "contains source links"],
+                    "model_tier": "small",
+                    "role_preset": "deep_research_agent",
+                    "tools_allowed": ["web_search", "url_select", "web_fetch", "web_crawl", "mcp_fetch"],
+                    "estimated_tokens": 500,
+                    "suggested_tools": ["web_search", "url_select", "web_fetch"],
+                    "tool_parameters": {"query": synthetic_topic},
+                    "output_format": {"type": "narrative", "required_fields": [], "optional_fields": []},
+                    "source_guidance": {
+                        "required": ["official", "aggregator"],
+                        "optional": ["news"],
+                        "avoid": ["social"],
+                    },
+                    "search_budget": {"max_queries": 8, "max_fetches": 12},
+                    "boundaries": {"in_scope": [synthetic_topic], "out_of_scope": []},
+                    "parent_area": synthetic_topic,
+                }
+            )
+            upstream_ids.append(task_id)
+
+    for task in ordered_tasks:
+        task_id = str(task.get("id") or "")
+        if not task_id:
+            continue
+        if _is_transform_terminal_task(task):
+            deps = [str(dep) for dep in (task.get("deps") or []) if str(dep).strip()]
+            if "task-merge" not in deps:
+                deps.append("task-merge")
+            task["deps"] = deps
+
+    had_merge = "task-merge" in task_map
+    ordered_tasks.append(
+        {
+            "id": "task-merge",
+            "title": "Evidence integration gate",
+            "goal": "Integrate child outputs into canonical facts, conflict adjudication, and traceable claim-evidence mapping",
+            "description": "Aggregate all upstream findings, deduplicate claims, resolve conflicts by source authority and recency, and produce an integration brief for downstream synthesis.",
+            "deps": upstream_ids,
+            "deliverable": "integration_brief",
+            "acceptance_criteria": [
+                "provides canonical_facts",
+                "provides claim_evidence_map for major claims",
+                "lists conflicts and resolution rationale",
+                "labels uncertainties and evidence gaps",
+            ],
+            "model_tier": "small",
+            "role_preset": "deep_research_agent",
+            "tools_allowed": ["mcp_fetch"],
+            "estimated_tokens": 600,
+            "suggested_tools": [],
+            "tool_parameters": {},
+            "output_format": {
+                "type": "structured",
+                "required_fields": [
+                    "canonical_facts",
+                    "claim_evidence_map",
+                    "conflicts",
+                    "uncertainties",
+                    "gap_ledger",
+                ],
+                "optional_fields": ["cross_task_insights"],
+            },
+            "source_guidance": {"required": ["official", "aggregator"], "optional": ["news"], "avoid": ["social"]},
+            "search_budget": {"max_queries": 0, "max_fetches": 0},
+            "boundaries": {"in_scope": ["cross-check"], "out_of_scope": []},
+            "parent_area": "integration",
+        }
+    )
+
+    rebuilt_map, dependency_count, reverse_dependencies, ready_queue, rebuild_errors = _build_task_graph(ordered_tasks)
+    return rebuilt_map, dependency_count, reverse_dependencies, ready_queue, rebuild_errors, not had_merge
+
+
 def _downgrade_dependencies_for_parallel(
     task_map: Dict[str, ResearchTask],
 ) -> Tuple[Dict[str, ResearchTask], Dict[str, int], Dict[str, List[str]], List[str], List[Dict[str, Any]], int]:
@@ -874,6 +981,35 @@ def decompose_node(state: ResearchState) -> Dict[str, Any]:
 
         task_map, dependency_count, reverse_dependencies, ready_queue, build_errors = _build_task_graph(raw_tasks)
         errors = errors + build_errors
+
+        # 中文注释：在 deep 策略或多任务场景，强制确保 integration gate 存在
+        strategy = _normalize_strategy(state.get("strategy", "deep"))
+        should_enforce_merge = (strategy == "deep") or (len(task_map) >= 2)
+        if should_enforce_merge:
+            (
+                merged_task_map,
+                merged_dependency_count,
+                merged_reverse_dependencies,
+                merged_ready_queue,
+                merged_errors,
+                merge_added,
+            ) = _ensure_integration_gate_in_plan(task_map)
+            errors.extend(merged_errors)
+            task_map = merged_task_map
+            dependency_count = merged_dependency_count
+            reverse_dependencies = merged_reverse_dependencies
+            ready_queue = merged_ready_queue
+            if merge_added:
+                _emit_event(
+                    state,
+                    "INTEGRATION_GATE_ENFORCED",
+                    "task-merge injected into execution plan",
+                    payload={
+                        "task_count": len(task_map),
+                        "ready_count": len(ready_queue),
+                    },
+                    node="decompose",
+                )
 
         if not task_map:
             errors.append({"type": "decompose_empty", "message": "decompose returned no executable tasks"})

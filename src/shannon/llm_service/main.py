@@ -911,17 +911,16 @@ def _build_resilient_fallback_content(
 
 # 中文注释：函数 _normalize_strategy 的入口
 def _normalize_strategy(strategy: str | None) -> str:
-    normalized = (strategy or "deep").lower()
-    allowed = {"quick", "standard", "deep"}
-    return normalized if normalized in allowed else "deep"
+    normalized = (strategy or "deep").lower().strip()
+    if normalized in {"quick", "standard", "deep"}:
+        return "deep"
+    return "deep"
 
 
 def _complexity_by_strategy(strategy: str) -> str:
     normalized = _normalize_strategy(strategy)
-    if normalized == "quick":
-        return "low"
-    if normalized == "standard":
-        return "medium"
+    if normalized == "deep":
+        return "high"
     return "high"
 
 
@@ -929,11 +928,9 @@ def _complexity_by_strategy(strategy: str) -> str:
 
 def _query_type_by_strategy(strategy: str) -> str:
     normalized = _normalize_strategy(strategy)
-    if normalized == "quick":
-        return "quick_lookup"
     if normalized == "deep":
         return "deep_research"
-    return "standard_research"
+    return "deep_research"
 
 
 # 中文注释：函数 _safe_parse_json_dict 的入口
@@ -1003,10 +1000,8 @@ def _normalize_model_tier(value: str | None) -> str:
 
 def _max_decompose_tier_for_strategy(strategy: str) -> str:
     normalized = _normalize_strategy(strategy)
-    if normalized == "quick":
-        return ModelTier.SMALL.value
-    if normalized == "standard":
-        return ModelTier.MEDIUM.value
+    if normalized == "deep":
+        return ModelTier.LARGE.value
     return ModelTier.LARGE.value
 
 

@@ -11,9 +11,9 @@ from shannon.orchestration.orchestrator.graph import (
 
 
 def test_determine_model_tier_policy():
-    # 中文注释：quick/standard/deep 分别对应 small/medium/large，非法值回退 deep；decompose/finalize 固定档位
-    assert determine_model_tier("quick", "planning") == "small"
-    assert determine_model_tier("standard", "planning") == "medium"
+    # 中文注释：策略硬合并后，规划阶段统一 large；decompose/finalize 维持固定档位
+    assert determine_model_tier("quick", "planning") == "large"
+    assert determine_model_tier("standard", "planning") == "large"
     assert determine_model_tier("deep", "planning") == "large"
     assert determine_model_tier("academic", "planning") == "large"
     assert determine_model_tier("quick", "decompose") == "small"

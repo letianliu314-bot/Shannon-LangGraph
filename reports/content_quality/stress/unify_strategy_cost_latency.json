@@ -1,0 +1,21 @@
+{
+  "generated_at": 1774154499.4373,
+  "runs": [
+    {
+      "strategy_requested": "quick",
+      "thread_id": "unify-baseline-quick-1774154396508",
+      "run_status": "completed",
+      "elapsed_seconds": 52.066,
+      "completed_task_count": 1,
+      "used_token": 244
+    },
+    {
+      "strategy_requested": "deep",
+      "thread_id": "unify-baseline-deep-1774154448583",
+      "run_status": "completed",
+      "elapsed_seconds": 50.845,
+      "completed_task_count": 1,
+      "used_token": 263
+    }
+  ]
+}

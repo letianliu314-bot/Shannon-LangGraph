@@ -15,6 +15,8 @@ import { getThreadEvents, getThreadState, getThreadStateDb } from "@/lib/api/cli
 import { EventUiState, initialEventUiState, reduceWithEvent } from "@/lib/events/reducer";
 import { GraphNodeData, Strategy, StreamEvent } from "@/lib/types";
 
+const UNIFIED_STRATEGY: Strategy = "deep";
+
 function prettyJson(value: unknown): string {
   return JSON.stringify(value ?? {}, null, 2);
 }
@@ -28,7 +30,6 @@ function parseAssistantSummary(state: Record<string, unknown> | null): string {
 }
 
 export default function HomePage() {
-  const [strategy, setStrategy] = useState<Strategy>("deep");
   const [maxConcurrency, setMaxConcurrency] = useState<number>(3);
   const [maxTasks, setMaxTasks] = useState<number>(6);
   const [eventUi, setEventUi] = useState(initialEventUiState);
@@ -144,7 +145,7 @@ export default function HomePage() {
       const runResult = await run({
         thread_id: threadId,
         user_request: content,
-        strategy,
+        strategy: UNIFIED_STRATEGY,
         max_concurrency: maxConcurrency,
         max_tasks: maxTasks
       });
@@ -157,7 +158,7 @@ export default function HomePage() {
         resolveAssistantMessage("请求提交失败，请检查服务连接。", true);
       }
     },
-    [addUserMessage, maxConcurrency, maxTasks, resolveAssistantMessage, run, setAssistantRunning, setChatError, setRunError, strategy, threadId]
+    [addUserMessage, maxConcurrency, maxTasks, resolveAssistantMessage, run, setAssistantRunning, setChatError, setRunError, threadId]
   );
 
   const selectedNode = useMemo<Node<GraphNodeData> | null>(() => {
@@ -203,12 +204,7 @@ export default function HomePage() {
           >
             新建 Thread
           </button>
-          <select aria-label="strategy-select" value={strategy} onChange={(e) => setStrategy(e.target.value as Strategy)}>
-            <option value="quick">quick</option>
-            <option value="standard">standard</option>
-            <option value="deep">deep</option>
-            <option value="academic">academic</option>
-          </select>
+          <span aria-label="strategy-select">strategy: unified-multi-agent</span>
           <input
             aria-label="max-concurrency"
             type="number"
