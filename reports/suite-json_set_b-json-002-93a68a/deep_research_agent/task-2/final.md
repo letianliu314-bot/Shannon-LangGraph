@@ -1,0 +1,32 @@
+[
+  {
+    "instruction": "为给定的 Python 函数生成一组单元测试（使用 pytest），并在测试失败时给出修复建议。",
+    "context": "目标语言: Python；目标模块: math_utils.py；函数: add(a, b)；覆盖点包括：常规输入、负数输入、零、以及不合法类型的输入；目标是帮助 AI 助手在单元测试生成和测试修复方面给出实用示例。",
+    "response": "测试用例:\n```python\nimport pytest\nfrom math_utils import add\n\n\ndef test_add_basic():\n    assert add(2, 3) == 5\n\n\ndef test_add_negative():\n    assert add(-1, -2) == -3\n\n\ndef test_add_zero():\n    assert add(0, 5) == 5\n\n\ndef test_add_type_error():\n    with pytest.raises(TypeError):\n        add('1', 2)\n```\n\n修复建议:\n- 若输入类型应为数字，考虑在函数内部进行类型检查并抛出明确的自定义异常或使用类型注解与运行时断言。\n- 对边界输入（如极大整数、浮点数与整型混合）添加测试，确保行为可预期。\n- 若函数设计接受任意数值类型，考虑使用 duck typing 并在必要处进行显式转换。\n- 更新文档字符串，描述输入约束和错误处理策略。",
+    "difficulty": "easy"
+  },
+  {
+    "instruction": "为 TypeScript 函数 parseDate(dateStr: string): Date | null 生成单元测试与修复建议（使用 Jest）。",
+    "context": "语言: TypeScript；模块: dateUtils.ts；函数: parseDate(dateStr: string): Date | null；目标: 验证有效日期、无效日期、空字符串等场景；关注时区和解析边界。",
+    "response": "测试用例:\n```ts\nimport { parseDate } from './dateUtils';\n\ndescribe('parseDate', () => {\n  test('parses valid date', () => {\n    expect(parseDate('2020-01-02')).toEqual(new Date('2020-01-02'));\n  });\n\n  test('returns null for invalid date', () => {\n    expect(parseDate('not-a-date')).toBeNull();\n  });\n\n  test('handles empty string', () => {\n    expect(parseDate('')).toBeNull();\n  });\n\n  test('parses ISO format', () => {\n    expect(parseDate('2020-01-02T00:00:00Z')).toEqual(new Date('2020-01-02T00:00:00Z'));\n  });\n});\n```\n\n修复建议:\n- 确保在无效输入时返回 null，而不是抛出异常；如需抛错，给出明确的错误类型与信息。\n- 注意时区处理，尽量在测试中使用统一的时区/UTC 日期以避免误差。\n- 如果解析逻辑依赖不同日期格式，考虑引入专门的格式检测优先级并添加相应单元测试。",
+    "difficulty": "medium"
+  },
+  {
+    "instruction": "为 Java 中的 computeDivision(int a, int b) 生成单元测试与修复建议（JUnit 5）。",
+    "context": "语言: Java；模块: MathUtils.java；函数: computeDivision(int a, int b)；关注正常除法、除数为 0 的处理，以及可能的溢出风险；测试应覆盖边界情况。",
+    "response": "测试用例:\n```java\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass MathUtilsTest {\n  @Test\n  void testDivideNormal() {\n    assertEquals(2, MathUtils.computeDivision(6, 3));\n  }\n\n  @Test\n  void testDivideByZeroThrows() {\n    assertThrows(ArithmeticException.class, () -> MathUtils.computeDivision(5, 0));\n  }\n}\n```\n\n修复建议:\n- 对除数为 0 的情况给出清晰的异常处理，考虑返回 OptionalInt 或抛出自定义 IllegalArgumentException（如 IllegalArgumentException: division by zero）。\n- 评估是否需要处理溢出风险（如 Int 的最小值除以 -1 的情形），并在实现中加入防护。\n- 如果函数设计应尽量稳定，考虑改为返回一个结果对象，包含成功与否及错误信息。",
+    "difficulty": "medium"
+  },
+  {
+    "instruction": "为 C++ 的 fetchData(size_t idx) 生成单元测试与修复建议（使用 Google Test）。",
+    "context": "语言: C++；模块: data_provider.hpp/.cpp；函数: fetchData(size_t idx) 返回 const std::string&；数据集合长度在运行时确定；关注越界、空容器等边界情况。",
+    "response": "测试用例:\n```cpp\n#include <gtest/gtest.h>\n#include \"data_provider.hpp\"\n\nTEST(FetchDataTest, Basic) {\n  // 假设数据在测试前已初始化为 {\"first\", \"second\"}\n  EXPECT_EQ(fetchData(0), std::string(\"first\"));\n}\n\nTEST(FetchDataTest, OutOfBounds) {\n  EXPECT_THROW(fetchData(999), std::out_of_range);\n}\n\nTEST(FetchDataTest, EmptyContainer) {\n  // 若容器为空，应抛出或返回默认值，具体实现需与 fetchData 约定一致\n  // 这里示例为抛出异常\n  EXPECT_THROW(fetchData(0), std::out_of_range);\n}\n```\n\n修复建议:\n- 使用边界检查，确保越界访问抛出 std::out_of_range（或自定义异常），避免下标错误导致的未定义行为。\n- 如果数据容器可能为空，考虑在 API 层返回一个默认值或通过返回值对象传递错误信息。\n- 建议将 fetchData 的行为在文档中明确：返回引用时的生命周期和对空容器的行为。",
+    "difficulty": "hard"
+  },
+  {
+    "instruction": "为 Python 的 fuzzy_match(s: str, pattern: str) 实现单元测试和修复建议，确保高效和正确性。",
+    "context": "语言: Python；函数: fuzzy_match(s, pattern)；目标是实现快速且容错的模糊匹配，考虑大小写、Unicode、性能与边界情况。",
+    "response": "测试用例:\n```python\nimport unittest\nfrom utils import fuzzy_match\n\nclass TestFuzzyMatch(unittest.TestCase):\n    def test_basic_match(self):\n        self.assertTrue(fuzzy_match('abcdef', 'abc'))\n\n    def test_no_match(self):\n        self.assertFalse(fuzzy_match('abcdef', 'xyz'))\n\n    def test_case_insensitive(self):\n        self.assertTrue(fuzzy_match('AbC', 'aBc'))\n\n    def test_unicode(self):\n        self.assertTrue(fuzzy_match('Résumé', 'Resume'))\n\nif __name__ == '__main__':\n    unittest.main()\n```\n\n修复建议:\n- 采用高效的模糊匹配算法（如简化的 Levenshtein 距离，或两阶段筛选后再计算距离），避免对大文本重复全量计算。\n- 提供一个阈值参数以控制匹配严格度；缓存常用模式的匹配结果以提升性能。\n- 处理 Unicode 编码问题，确保对多语言文本的稳健性。\n- 增加对性能敏感场景的基准测试。",
+    "difficulty": "hard"
+  }
+]
