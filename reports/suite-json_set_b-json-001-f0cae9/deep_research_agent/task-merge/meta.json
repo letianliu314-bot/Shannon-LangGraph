@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-json_set_b-json-001-f0cae9",
+  "task_id": "task-merge",
+  "stage": "phase-1",
+  "capability": "integration",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-json_set_b-json-001-f0cae9/deep_research_agent/task-merge/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-json_set_b-json-001-f0cae9/deep_research_agent/task-merge/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774164973.14401,
+  "content": "{\"canonical_facts\": \"fallback\", \"claim_evidence_map\": \"fallback\", \"conflicts\": \"fallback\", \"uncertainties\": \"fallback\", \"gap_ledger\": \"fallback\"}",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
