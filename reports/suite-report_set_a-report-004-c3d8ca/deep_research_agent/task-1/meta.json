@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-004-c3d8ca",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AI",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-004-c3d8ca/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-004-c3d8ca/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774185246.492894,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请调研AI代码助手在中大型研发团队的真实提效情况,质量影响与治理方案,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=6, fetched_total=7\n- source_count: 6\nSources:\n- https://juejin.cn/post/7618843361567637531\n- https://www.secrss.com/articles/81604\n- https://developer.aliyun.com/ask/694171\n- https://www.infoq.cn/article/9rX1Ov951gKtaTmQb8Jq\n- https://www.secrss.com/info/about\n- https://www.secrss.com\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请调研AI代码助手在中大型研发团队的真实提效情况、质量影响与治理方案，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
