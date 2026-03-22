@@ -1,0 +1,107 @@
+{
+  "suite_id": "report_set_a",
+  "version": "v1",
+  "expected_mode": "report",
+  "queries": [
+    {
+      "query_id": "report-001",
+      "expected_mode": "report",
+      "user_request": "请调研2026年中国AI客服机器人在电商行业的落地现状、头部厂商、ROI模型与主要失败案例，并输出结构化调研报告。"
+    },
+    {
+      "query_id": "report-002",
+      "expected_mode": "report",
+      "user_request": "请分析AI销售助手在SaaS企业中的应用路径，包括线索评分、外呼辅助、转化提升机制与实施风险，输出调研报告。"
+    },
+    {
+      "query_id": "report-003",
+      "expected_mode": "report",
+      "user_request": "请比较医疗影像AI在肺结节、乳腺筛查、卒中急诊三个场景的商业化进展，输出调研报告。"
+    },
+    {
+      "query_id": "report-004",
+      "expected_mode": "report",
+      "user_request": "请调研AI代码助手在中大型研发团队的真实提效情况、质量影响与治理方案，输出调研报告。"
+    },
+    {
+      "query_id": "report-005",
+      "expected_mode": "report",
+      "user_request": "请分析银行业生成式AI在智能投顾与合规审查的应用边界，输出调研报告。"
+    },
+    {
+      "query_id": "report-006",
+      "expected_mode": "report",
+      "user_request": "请调研AI在跨境电商选品与广告创意优化中的应用效果，输出调研报告。"
+    },
+    {
+      "query_id": "report-007",
+      "expected_mode": "report",
+      "user_request": "请分析教育行业AI学伴产品的留存机制、付费模式与监管风险，输出调研报告。"
+    },
+    {
+      "query_id": "report-008",
+      "expected_mode": "report",
+      "user_request": "请调研制造业AI质检方案（视觉+多模态）的部署成本与收益周期，输出调研报告。"
+    },
+    {
+      "query_id": "report-009",
+      "expected_mode": "report",
+      "user_request": "请分析企业知识库RAG在法律团队中的应用成熟度与准确性挑战，输出调研报告。"
+    },
+    {
+      "query_id": "report-010",
+      "expected_mode": "report",
+      "user_request": "请调研AI招聘助手在简历筛选与面试评估中的偏见风险与缓解方法，输出调研报告。"
+    },
+    {
+      "query_id": "report-011",
+      "expected_mode": "report",
+      "user_request": "请分析AI在药物发现早期筛选中的应用格局、关键公司与技术瓶颈，输出调研报告。"
+    },
+    {
+      "query_id": "report-012",
+      "expected_mode": "report",
+      "user_request": "请调研AI视频生成在品牌营销中的应用路径、版权风险与成本结构，输出调研报告。"
+    },
+    {
+      "query_id": "report-013",
+      "expected_mode": "report",
+      "user_request": "请分析物流行业AI调度与路径优化的典型落地案例和实施门槛，输出调研报告。"
+    },
+    {
+      "query_id": "report-014",
+      "expected_mode": "report",
+      "user_request": "请调研保险理赔中的AI审核与反欺诈应用现状，输出调研报告。"
+    },
+    {
+      "query_id": "report-015",
+      "expected_mode": "report",
+      "user_request": "请分析AI语音客服在运营商行业的效果评估指标与部署策略，输出调研报告。"
+    },
+    {
+      "query_id": "report-016",
+      "expected_mode": "report",
+      "user_request": "请调研AI在零售门店的需求预测和补货优化中的价值兑现路径，输出调研报告。"
+    },
+    {
+      "query_id": "report-017",
+      "expected_mode": "report",
+      "user_request": "请分析AI会议助手在企业协同场景中的竞争格局与产品差异，输出调研报告。"
+    },
+    {
+      "query_id": "report-018",
+      "expected_mode": "report",
+      "user_request": "请调研AIGC在游戏NPC与剧情生成中的商业化现状与风险，输出调研报告。"
+    },
+    {
+      "query_id": "report-019",
+      "expected_mode": "report",
+      "user_request": "请分析AI法务审阅工具在合同管理中的应用深度与误判成本，输出调研报告。"
+    },
+    {
+      "query_id": "report-020",
+      "expected_mode": "report",
+      "user_request": "请调研AI Agent在企业自动化办公（财务/采购/HR）中的可行性与最佳实践，输出调研报告。"
+    }
+  ]
+}

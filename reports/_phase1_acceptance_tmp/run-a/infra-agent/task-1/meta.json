@@ -5,8 +5,9 @@
   "capability": "infra",
   "agent": "infra-agent",
   "artifact_path": "run-a/infra-agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/_phase1_acceptance_tmp/run-a/infra-agent/task-1/final.md",
   "artifact_name": "final.md",
-  "timestamp": 1774066822.663764,
+  "timestamp": 1774164448.498129,
   "content": "infra gpu supply chain analysis",
   "metadata": {
     "quality_score": 0.92,

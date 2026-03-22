@@ -5,8 +5,9 @@
   "capability": "memory",
   "agent": "memory-agent",
   "artifact_path": "run-a/memory-agent/task-2/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/_phase1_acceptance_tmp/run-a/memory-agent/task-2/final.md",
   "artifact_name": "final.md",
-  "timestamp": 1774066822.664417,
+  "timestamp": 1774164448.498972,
   "content": "memory layer overview",
   "metadata": {
     "quality_score": 0.88,

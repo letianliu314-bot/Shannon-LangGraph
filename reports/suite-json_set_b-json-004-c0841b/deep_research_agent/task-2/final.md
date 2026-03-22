@@ -1,3 +1,0 @@
-I’m going to perform a quick literature search to ground the JSON training data in verifiable sources about fact verification and refusal strategies in enterprise RAG knowledge-base QA. I will then craft five JSON samples where each sample’s evidence field cites and traces claims to those sources. If sources don’t yield clear guidance, I’ll mark uncertainty accordingly.
-
-Proceeding to gather and verify sources now.

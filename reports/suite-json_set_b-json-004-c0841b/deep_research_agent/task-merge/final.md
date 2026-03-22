@@ -1,1 +1,0 @@
-{"canonical_facts": "fallback", "claim_evidence_map": "fallback", "conflicts": "fallback", "uncertainties": "fallback", "gap_ledger": "fallback"}

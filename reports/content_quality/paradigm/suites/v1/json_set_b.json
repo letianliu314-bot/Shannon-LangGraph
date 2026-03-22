@@ -1,0 +1,42 @@
+{
+  "suite_id": "json_set_b",
+  "version": "v1",
+  "expected_mode": "json_train",
+  "queries": [
+    {
+      "query_id": "json-001",
+      "expected_mode": "json_train",
+      "expected_count": 5,
+      "required_fields": ["instruction", "input", "output", "category"],
+      "user_request": "围绕“AI客服在电商售后中的多轮对话处理”，请生成5条JSON训练数据，字段为instruction,input,output,category。"
+    },
+    {
+      "query_id": "json-002",
+      "expected_mode": "json_train",
+      "expected_count": 5,
+      "required_fields": ["instruction", "context", "response", "difficulty"],
+      "user_request": "围绕“AI代码助手进行单元测试生成与修复建议”，请生成5条JSON训练数据，字段为instruction,context,response,difficulty。"
+    },
+    {
+      "query_id": "json-003",
+      "expected_mode": "json_train",
+      "expected_count": 5,
+      "required_fields": ["instruction", "patient_query", "safe_answer", "risk_flag"],
+      "user_request": "围绕“医疗AI问诊助手的安全回复与风险提示”，请生成5条JSON训练数据，字段为instruction,patient_query,safe_answer,risk_flag。"
+    },
+    {
+      "query_id": "json-004",
+      "expected_mode": "json_train",
+      "expected_count": 5,
+      "required_fields": ["instruction", "question", "evidence", "answer"],
+      "user_request": "围绕“企业RAG知识库问答中的事实核验与拒答策略”，请生成5条JSON训练数据，字段为instruction,question,evidence,answer。"
+    },
+    {
+      "query_id": "json-005",
+      "expected_mode": "json_train",
+      "expected_count": 5,
+      "required_fields": ["instruction", "customer_message", "assistant_reply", "intent"],
+      "user_request": "围绕“AI销售助手的异议处理与跟进建议”，请生成5条JSON训练数据，字段为instruction,customer_message,assistant_reply,intent。"
+    }
+  ]
+}
