@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-015-76b2fc",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AI",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-015-76b2fc/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-015-76b2fc/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774186823.1994722,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请分析AI语音客服在运营商行业的效果评估指标与部署策略,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=6, fetched_total=8\n- source_count: 1\nSources:\n- https://www.hypers.com/content/archives/10198\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请分析AI语音客服在运营商行业的效果评估指标与部署策略，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
