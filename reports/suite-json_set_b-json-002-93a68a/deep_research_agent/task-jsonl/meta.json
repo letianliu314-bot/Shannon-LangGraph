@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-json_set_b-json-002-93a68a",
+  "task_id": "task-jsonl",
+  "stage": "phase-1",
+  "capability": "general",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-json_set_b-json-002-93a68a/deep_research_agent/task-jsonl/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-json_set_b-json-002-93a68a/deep_research_agent/task-jsonl/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774164586.945724,
+  "content": "{\"line_id\": \"L1\", \"question\": \"What evidence item 1 is available from dependencies?\", \"answer\": \"Dependency evidence was aggregated into this fallback structured sample.\", \"source\": \"\", \"difficulty\": \"easy\"}",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
