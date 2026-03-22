@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-018-851bc0",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AIGC-NPC",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-018-851bc0/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-018-851bc0/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774165624.940866,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请调研AIGC在游戏NPC与剧情生成中的商业化现状与风险,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=6, fetched_total=8\n- source_count: 1\nSources:\n- https://arxiv.org/html/2505.20011v1\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请调研AIGC在游戏NPC与剧情生成中的商业化现状与风险，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
