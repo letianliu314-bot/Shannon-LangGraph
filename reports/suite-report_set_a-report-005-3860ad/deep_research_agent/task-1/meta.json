@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-005-3860ad",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AI",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-005-3860ad/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-005-3860ad/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774185381.4101791,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请分析银行业生成式AI在智能投顾与合规审查的应用边界,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=6, fetched_total=8\n- source_count: 1\nSources:\n- https://www.ey.com/zh_tw/insights/ai/core-values-in-generative-ai-for-financial-services\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请分析银行业生成式AI在智能投顾与合规审查的应用边界，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
