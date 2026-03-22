@@ -1,0 +1,1 @@
+{"line_id": "L1", "question": "What evidence item 1 is available from dependencies?", "answer": "Dependency evidence was aggregated into this fallback structured sample.", "source": "", "difficulty": "easy"}
