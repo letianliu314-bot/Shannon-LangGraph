@@ -1,0 +1,16 @@
+{
+  "run_id": "suite-report_set_a-report-020-f1f673",
+  "task_id": "task-1",
+  "stage": "phase-1",
+  "capability": "AI-Agent-HR",
+  "agent": "deep_research_agent",
+  "artifact_path": "suite-report_set_a-report-020-f1f673/deep_research_agent/task-1/final.md",
+  "artifact_abs_path": "/Users/Violet/Desktop/Shannon/reports/suite-report_set_a-report-020-f1f673/deep_research_agent/task-1/final.md",
+  "artifact_name": "final.md",
+  "timestamp": 1774188017.758096,
+  "content": "Findings Summary\n- task_id: task-1\n- task_title: Research 请调研AI Agent在企业自动化办公（财务/采购/HR）中的可行性与最佳实践,输出调研报告.\n- deliverable: facts_and_citations\n- retrieval_metrics: selected_total=3, fetched_total=6\n- source_count: 5\nSources:\n- https://adg.csdn.net/69525a2d5b9f5f31781baa35.html\n- https://www.woshipm.com/ai/6268822.html\n- https://www.yonyou.com/news/4468\n- https://adg.csdn.net\n- https://adg.csdn.net/search?q=\nNotes:\n- Generated via resilient fallback to preserve workflow continuity.\n- user_request: 请调研AI Agent在企业自动化办公（财务/采购/HR）中的可行性与最佳实践，输出调研报告。",
+  "metadata": {
+    "model": "gpt-5-nano",
+    "model_tier": "small"
+  }
+}
