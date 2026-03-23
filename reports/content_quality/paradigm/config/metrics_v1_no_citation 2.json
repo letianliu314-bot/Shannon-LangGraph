@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "common": {
+    "record_fields": [
+      "suite_id",
+      "query_id",
+      "expected_mode",
+      "observed_mode",
+      "classification_correct",
+      "has_output",
+      "backend_latency_ms",
+      "parallel_agent_peak",
+      "token_used_once",
+      "token_source",
+      "thread_id",
+      "run_status"
+    ]
+  },
+  "report": {
+    "gates": {
+      "min_char_count": 500,
+      "min_citation_count": 0,
+      "require_fluency_pass": true
+    },
+    "scoring": {
+      "max_score": 100,
+      "char_score_max": 60,
+      "char_score_full_at": 1200,
+      "citation_score_max": 40,
+      "citation_score_full_at": 6
+    }
+  },
+  "json_train": {
+    "scoring_enabled": false,
+    "gates": {
+      "require_valid_json": true,
+      "require_exact_count": true,
+      "require_required_fields": true,
+      "require_non_empty_fields": true
+    }
+  }
+}

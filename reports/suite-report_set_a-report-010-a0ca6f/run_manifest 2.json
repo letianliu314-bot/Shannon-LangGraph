@@ -1,0 +1,17 @@
+{
+  "run_id": "suite-report_set_a-report-010-a0ca6f",
+  "created_at": 1774188893.467736,
+  "layout_version": "v1",
+  "policy": {
+    "single_branch": true,
+    "append_only": true,
+    "forbid_rebase": true,
+    "forbid_merge": true
+  },
+  "stage": "phase-1",
+  "phase": "phase-1",
+  "gate_status": "open",
+  "strategy": "deep",
+  "user_id": "anonymous",
+  "tenant_id": ""
+}
